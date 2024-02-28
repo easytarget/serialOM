@@ -25,7 +25,7 @@ print('state: ' + OM.model['state']['status']
 ```
 Try setting `quiet=False` for serialOM to see a lot more detail of the connecction progress.
 
-If serialOM times out or otherwise fails to connect to the controller during initialisation `serialOM.machineMode` will be empty (`''`), otherwise this will reflect the controller mode; currently `'FFF'`, `'CNC'` or `'Laser'`.
+If serialOM times out or fails to detect a RRF controller during initialisation `serialOM.machineMode` will be empty (`''`), otherwise this will reflect the controller mode; currently `'FFF'`, `'CNC'` or `'Laser'`. 
 
 Once connected calling `serialOM.update()` will refresh the model tree. It returns `True` if the update succeeded, `False` if it failed (response timeout). It deals gracefully with `machineMode` changes and `upTime` rollbacks (controller reboots) refreshing the entire model and (re)setting `serialOM.machineMode` as needed.
 
@@ -49,7 +49,7 @@ There are two public functions provided by `serialOM` for convenience:
 This uses the features above to implement a robust data gathering loop. This, in turn, calls an output class to process the data being gathered. In the demo this is a `text` implementation of the class which logs to the console, and optionally to a log file.
 * See [printPy/README.md](printPy/README.md)
 * The text output class serves as a template for writing classes to display ObjectModel info on I2C/SPI or any other external display/data feed.
-* This will eventually be ported to microPython as the core of [PrintPy2040](https://github.com/easytarget/PrintPy2040/). Eventually.
+* This will eventually be ported to microPython as the core of [PrintPy2040](https://github.com/easytarget/PrintPy2040/).
 
 
 ## Operation:
