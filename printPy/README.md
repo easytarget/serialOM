@@ -7,9 +7,14 @@ A test and example for the `serialOM.py' class/library.
   * Supports multiple machine modes (currently: `FFF`, `CNC` and `Laser`) showing data appropriate to the mode.
 
 ## Use
-* See comments in config.py for configuring connection and other details.
-  * Defaults to `/dev/ttyACM[01]`, `57600` baud; use `M575 P0 S2` in your `config.g` if this is not already configured.
-* Accepts up to three optional (positional) arguments; `refresh` `device` `baud`, where *refresh* is the main update interval in milliseconds, *device* is the serial port path/name, *baud* is an integer.
+```console
+> cd .../serialOM/printPy
+> python printPy [interval_ms [port [baud]]]
+```
+* See comments in config.py for configuring default connection and other details.
+  * Defaults to `/dev/ttyACM[01]`, `57600` baud.
+* Use `M575 P0 S2` in your `config.g` if this is not already configured.
+* Accepts up to three optional (positional) arguments; `interval_ms` `port` `baud`, where *update_ms* is the main update interval in milliseconds, *port* is the serial port path/name and *baud* is an integer.
 
 ### Requirements:
 * Expects to find the `serialOM.py` library in it's parent directory.
