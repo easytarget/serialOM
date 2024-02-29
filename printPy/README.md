@@ -1,15 +1,18 @@
 # `printPY.py`
 A test and example for the `serialOM.py' class/library.
 * This was written as a prototype for the 'heart' of micropython based PrintPy2040.
-* Output is a seperate python class, easy to adapt for alternate displays.
-  * By default just an example text/console output class is provided.
-  * It will be easy to adapt this to display on external devices (eg I2C/SPI displays).
-  * Supports multiple machine modes (currently: `FFF`, `CNC` and `Laser`) showing data appropriate to the mode.
 
+Output is handled in a seperate class, easy to adapt for alternate displays.
+* By default just an example text/console output class logging to the console and an optional logfile is provided.
+  * Supports multiple machine modes (currently: `FFF`, `CNC` and `Laser`) showing data appropriate to the mode.
+* It will be easy to adapt this to display on external devices (eg I2C/SPI displays)
+  * All the hardware functions can remain inside the class itself.
+  * The output class can be run on a seperate thread to the main loop.
+  
 ## Use
 ```console
-> cd .../serialOM/printPy
-> python printPy [interval_ms [port [baud]]]
+$ cd .../serialOM/printPy
+$ python printPy [interval_ms [port [baud]]]
 ```
 * See comments in config.py for configuring default connection and other details.
   * Defaults to `/dev/ttyACM[01]`, `57600` baud.
@@ -18,7 +21,7 @@ A test and example for the `serialOM.py' class/library.
 
 ### Requirements:
 * Expects to find the `serialOM.py` library in it's parent directory.
-  * Modify the line at the top of the file to change this path.
+  * Modify the *path.insert()* line at the top of the file to change this path.
 * Requires Python 3.7+ (ordered dictionaries).
 * Requires `pyserial`.
   * Install your distros pyserial package: eg: `sudo apt install python-serial`, or `pip install --user pyserial`, or use a virtualenv (advanced users).
