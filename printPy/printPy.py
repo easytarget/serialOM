@@ -51,7 +51,7 @@ def restartNow(why):
     #reset() # Micropython; reboot module
 
 # Used for critical hardware errors during initialisation on MCU's
-# Unused in Cpython, instead we soft-fail, restart and try again.
+# mostly unused in Cpython, instead we soft-fail, restart and try again.
 # - in microPython we will be harsher with hardware errors
 def hardwareFail(why):
     pp('A critical hardware error has occured!')
@@ -106,6 +106,8 @@ if config.outputLog:
 # Get output/display device
 pp('starting output')
 out = outputRRF(log=outputLog)
+if not out.running:
+    hardwareFail('Failed to start output device')
 
 # Init RRF USB/serial connection
 rrf = None
