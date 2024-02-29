@@ -37,11 +37,21 @@ $ python printPy [interval_ms [port [baud]]]
 ## output class:
 The output class, *outputRRF* is, essentially, very simple.
 
-At init *outputRRF()* takes one optional argument: `outputLog`; a file handle for the output log (or None to disable the log)
+At init *outputRRF()* takes one optional argument: `log`; a file handle for the output log (or None to disable)
 
-It provides two calls:
-* outputRRF.updateModel(model):
+It provides three calls:
+* outputRRF.update(model):
   * Updates the ObjectModel being displayed.
-* outputRRF.showStatus():
-  * Shows extended status information
+  * *model* is an optional parameter
+* outputRRF.showStatus(model):
+  * Shows extended status information in response to a button press or other trigger
+  * *model* is an optional parameter
+  * not really used in the text outputter, aimed at standalone applications like PrintPy2040
+* outputRRF.restart():
+  * Tells the output device that tha controller has restarted, for animation purposes.
+And:
+* *outputRRF.running* : a simple boolean to let the caller enquire if the display is active
 
+The output class keeps it's own copy of the OM so that it can rebuild it's display at will (eg for animation), this local copy is only updated when update() or showStatus() are called with the *model* parameter.
+
+It is expected to be fully independent of the main *printPy* colection loop. Responding only to what it sees in the ObjectModel updates it is passed. Doing appropriate animations when started or told the controller rebooted, showing extra status when commanded and choosing whether to turn on/off via the machine status, etc.
