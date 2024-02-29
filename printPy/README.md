@@ -34,19 +34,19 @@ $ python printPy [interval_ms [port [baud]]]
   * All times are in `ms` (micropython uses `int(ms)` for it's timing basics rather than `float(seconds)`).
 * Tested and developed on a RaspberryPI connected to my Duet2 wifi via USB/serial.
 
-## output class:
+# output class:
 The output class, `outputRRF` is, essentially, very simple.
 
 An example is presented in `outputTXT.py` that can log to the console and to a file.
 
-### Init:
+## Init:
 At init *outputRRF()* takes one optional argument: `log`; a file handle for the output log (or None to disable)
 
 It must set *outputRRF.omKeys* with the machine modes and keypairs it supports, *printPy* will pass this to *serialOM* (see the serialOM documentation)
 
 Any necesscary hardware setup needs to happen during init, and the *running* flag set if this succeeds
 
-### Use:
+## Use:
 
 *outputRRF* provides three calls:
 * outputRRF.update(model):
@@ -64,6 +64,7 @@ The above all return an appropriate console text response for the outputTXT exam
 You can also enqire about the output state:
 * *outputRRF.running* : a simple boolean that is true if the display is active
 
+## Notes:
 The output class keeps it's own copy of the OM so that it can rebuild it's display at will (eg for animation), this local copy is only updated when update() or showStatus() are called with the *model* parameter.
 
 It is expected to be fully independent of the main *printPy* colection loop. Responding only to what it sees in the ObjectModel updates it is passed and doing appropriate animations on startup and when *showStatus()* or *restart()* are called. And choosing brightness levels and whether to turn on/off via the machine status, etc.
