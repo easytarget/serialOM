@@ -1,5 +1,6 @@
 # serialOM.py
-A RRF ObjectModel serial access class/library for Python3
+A RepRapFirmware ObjectModel serial access tool for Python3
+https://github.com/Duet3D/RepRapFirmware/wiki/Object-Model-Documentation
 
 Requirements:
 * `PySerial` (https://pyserial.readthedocs.io/)
@@ -25,32 +26,24 @@ print('state: ' + OM.model['state']['status']
 ```
 Try setting `quiet=False` for serialOM to see a lot more detail of the connecction progress.
 
-If serialOM times out or fails to detect a RRF controller during initialisation `serialOM.machineMode` will be empty (`''`), otherwise this will reflect the controller mode; currently `'FFF'`, `'CNC'` or `'Laser'`. 
+If serialOM times out or fails to detect a RRF controller during initialisation `serialOM.machineMode` will be empty (`''`), otherwise this will reflect the controller mode; currently `'FFF'`, `'CNC'` or `'Laser'`.
 
 Once connected calling `serialOM.update()` will refresh the model tree. It returns `True` if the update succeeded, `False` if it failed (response timeout). It deals gracefully with `machineMode` changes and `upTime` rollbacks (controller reboots) refreshing the entire model and (re)setting `serialOM.machineMode` as needed.
 
 The provided 'miniDemo.py' script is more detailed and shows the use of `updating()` and `getResponse()` functions.
 
-#### Blocking:
+### Blocking:
 When being initialised, updated or making requests `serialOM` is blocking, it implements it's own request timeouts and will return if the connected device times out. The 'per request' timeout can be passed as an argument, during updates it will make 2 requests minimum, plus one request per additional mode OM key. During `init` additional requests occur to detect firmware and initial state.
 
 The `Serial()` device neeeds to have it's blocking timeouts set lower than the overall Request timeout, this is done during init by `serialOM` itself and does not need to be specified when creating the serial object.
 
-#### Exceptions:
+### Exceptions:
 `serialOM` catches all exceptions coming from `serial` devices during read and write operations and will raise it's own `serialOMError` exception in response, with the original exception in the body. This allows the calling script to retry/re-initialise the connection as needed (handy for USB serial which disconnects when the controller reboots).
 
-#### Extras:
+## Extras:
 There are two public functions provided by `serialOM` for convenience:
 * `sendGcode('code')` : Sends the specified `code` to the controller, has no return value.
 * `getResponse('code')`: Sends `code` and waits for a response ending with `ok`, returns a list of recieved lines. Conforms to the request timeout as described above and returns an empty list if no valid response recieved.
-
-## printPy demo:
-`serialOM` comes with a full implementation of a datalogging script in the `printPy` folder. 
-This uses the features above to implement a robust data gathering loop. This, in turn, calls an output class to process the data being gathered. In the demo this is a `text` implementation of the class which logs to the console, and optionally to a log file.
-* See [printPy/README.md](printPy/README.md)
-* The text output class serves as a template for writing classes to display ObjectModel info on I2C/SPI or any other external display/data feed.
-* This will eventually be ported to microPython as the core of [PrintPy2040](https://github.com/easytarget/PrintPy2040/).
-
 
 ## Operation:
 Implements a RRF ObjectModel fetch/update cycle in Python, basically a CPython prototype of a microPython project.
@@ -66,9 +59,44 @@ Implements a RRF ObjectModel fetch/update cycle in Python, basically a CPython p
   * Install your distros pyserial package: eg: `sudo apt install python-serial`, or `pip install --user pyserial`, or use a virtualenv (advanced users).
   * On linux make sure your user is in the 'dialout' group to access the devices
   * There is no reason why this wont run on Windows, but I have not tried this. You will need a Python 3 install with pyserial, and change the device path to the windows equivalent.
-* Notes:
+
+## Notes:
   * CPython; but I am trying to keep all the logic and data handling simple and low-memory for running on microPython.
     * Non micropython standard libs are discouraged unless they have a easy micropython equivalent/local lib.
     * All times are in `ms` (micropython uses `int(ms)` for it's timing basics rather than `float(seconds)`)
   * Tested and developed on a RaspberryPI connected to my Duet2 wifi via USB/serial
   * You can specify a 'raw' log file; this is handy when debugging but will fill very rapidly and should never be used 'in production'
+  * Published under the CC0 (Creative Commons Zero) Licence; use however you want! Dont blame me if it all goes wrong..
+
+# printPy.py:
+`serialOM` comes with a full implementation of a datalogging script in the `printPy` folder.
+This uses the features above to implement a robust data gathering loop. This, in turn, calls an output class to process the data being gathered. In the demo this is a `text` implementation of the class which logs to the console, and optionally to a log file.
+* See [printPy/README.md](printPy/README.md)
+* The text output class serves as a template for writing classes to display ObjectModel info on I2C/SPI or any other external display/data feed.
+* This will eventually be ported to microPython as the core of [PrintPy2040](https://github.com/easytarget/PrintPy2040/).
+
+```console
+> python printPy 10000
+printPy.py is starting at: 2024-2-29 01:02:54 (device localtime)
+starting output
+device "/dev/ttyACM0" available
+connected to: /dev/ttyACM0 @57600
+serialOM is starting
+checking for connected RRF controller
+> M115
+>> FIRMWARE_NAME: RepRapFirmware for Duet 2 WiFi/Ethernet FIRMWARE_VERSION: 3.4.6 ELECTRONICS: Duet WiFi 1.02 or later FIRMWARE_DATE: 2023-07-21 14:08:28
+>> ok
+controller is connected
+making initial data set request
+connected to ObjectModel
+info: RepRapFirmware for Duet 2 WiFi/Ethernet v3.4.6 on Duet 2 WiFi
+      Controller is in "FFF" mode
+      Vin: 23.8V | mcu: 41.0C
+status: processing | uptime: 8:45:57 | wifi: 10.0.0.30 | progress: 88.5% | bed: 100.0 (100.0) | e0: 280.2 (280.0) | message: Template_For_Diagrams.gcode
+status: processing | uptime: 8:46:07 | wifi: 10.0.0.30 | progress: 92.5% | bed: 100.0 (100.0) | e0: 279.5 (280.0) | message: Template_For_Diagrams.gcode
+status: processing | uptime: 8:46:17 | wifi: 10.0.0.30 | progress: 94.4% | bed: 100.0 (100.0) | e0: 280.2 (280.0) | message: Template_For_Diagrams.gcode
+status: processing | uptime: 8:46:27 | wifi: 10.0.0.30 | progress: 95.9% | bed: 100.0 (0.0) | e0: 280.4 (0.0)
+status: processing | uptime: 8:46:37 | wifi: 10.0.0.30 | progress: 95.9% | bed: 98.5 (0.0) | e0: 276.9 (0.0)
+status: idle | uptime: 8:46:47 | wifi: 10.0.0.30 | bed: 96.8 (0.0) | e0: 268.2 (0.0)
+status: idle | uptime: 8:46:57 | wifi: 10.0.0.30 | bed: 95.2 (0.0) | e0: 258.9 (0.0)
+```
