@@ -8,7 +8,7 @@ Output is handled in a seperate class, easy to adapt for alternate displays.
 * It will be easy to adapt this to display on external devices (eg I2C/SPI displays)
   * All the hardware functions can remain inside the class itself.
   * The output class can be run on a seperate thread to the main loop.
-  
+
 ## Use
 ```console
 $ cd .../serialOM/printPy
@@ -48,7 +48,7 @@ Any necesscary hardware setup needs to happen during init, and the *running* fla
 
 ## Use:
 
-*outputRRF* provides three calls:
+*outputRRF* provides two calls:
 * outputRRF.update(model):
   * Updates the ObjectModel being displayed.
   * *model* is an optional parameter
@@ -56,10 +56,8 @@ Any necesscary hardware setup needs to happen during init, and the *running* fla
   * Shows extended status information in response to a button press or other trigger
   * *model* is an optional parameter
   * not really used in the text outputter, aimed at standalone applications like PrintPy2040
-* outputRRF.restart():
-  * Tells the output device that tha controller has restarted, for animation purposes.
 
-The above all return an appropriate console text response for the outputTXT example class
+The above both return an appropriate console text response for the outputTXT example class
 
 You can also enqire about the output state:
 * *outputRRF.running* : a simple boolean that is true if the display is active

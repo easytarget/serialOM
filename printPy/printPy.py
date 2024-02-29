@@ -40,9 +40,13 @@ def pp(*args, **kwargs):
 
 # Do a minimum drama restart/reboot
 def restartNow(why):
-    print(out.restart(),end='')
-    pp('Error: ' + why +'\nRestarting in ',end='')
-    # Pause for a few seconds, then restart
+    pp('Error: ' + why)
+    if outputLog:
+        outputLog.flush()
+    if rawLog:
+        rawLog.flush()
+    # Countdown and restart
+    pp('Restarting in ',end='')
     for c in range(config.rebootDelay,0,-1):
         pp(c,end=' ',flush=True)
         sleep_ms(1000)
@@ -103,7 +107,7 @@ if config.outputLog:
         pp('output being logged to: ', config.outputLog)
         outputLog.write('\n' + startText + '\n')
 
-# Get output/display device
+# Get output/display device, hard fail if not available
 pp('starting output')
 out = outputRRF(log=outputLog)
 if not out.running:
@@ -161,6 +165,9 @@ while True:
              print(outputText,end='')
     else:
         pp('Failed to fetch ObjectModel data')
+    # check output is running and restart if not
+    if not out.running:
+        restartNow('Output device has failed')
     # Request cycle ended, wait for next
     while ticks_diff(ticks_ms(),begin) < config.updateTime:
         sleep_ms(1)

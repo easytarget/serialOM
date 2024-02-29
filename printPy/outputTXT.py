@@ -17,22 +17,18 @@ class outputRRF:
     def __init__(self, log=None):
         self.log = log
         self.OM = None
+        self.lastUpTime = -1
         # If running I2C displays etc this should reflect their status
         self.running = True
 
-    def restart(self):
-        # Nothing much to do for text outputter
-        if self.log:
-            self.log.write('A reboot of the controller has been detected.\n')
-        return('output restarting\n')
-
     def update(self,model=None):
         # Updates the local model, triggers an output update
-        if model is None:
-            return ''
-        else:
+        if model is not None:
             self.OM = model
-            return self._showModel() + '\n'
+        if self.OM is None:
+            # called while not connected.
+            return('no update data available\n')
+        return self._showModel() + '\n'
 
     def showStatus(self,model=None):
         # Show specific status details for the controller and PrintPy
@@ -41,7 +37,7 @@ class outputRRF:
             self.OM = model
         if self.OM is None:
             # called while not connected.
-            return('No data available')
+            return('no data available\n')
         # simple info about board and logger
         # needs 'boards' to be in the list of keys above..
         r = 'info: '
@@ -51,6 +47,9 @@ class outputRRF:
         r += self.OM['state']['machineMode'] + '" mode\n      '
         r += 'Vin: %.1f' % self.OM['boards'][0]['vIn']['current'] + 'V'
         r += ' | mcu: %.1f' % self.OM['boards'][0]['mcuTemp']['current'] + 'C'
+        # Return results
+        if self.log:
+            self.log.write('[' + str(int(time())) + '] ' + r + '\n')
         return r + '\n'
 
     def _showModel(self):
