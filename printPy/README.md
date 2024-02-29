@@ -49,8 +49,11 @@ It provides three calls:
   * not really used in the text outputter, aimed at standalone applications like PrintPy2040
 * outputRRF.restart():
   * Tells the output device that tha controller has restarted, for animation purposes.
-And:
-* *outputRRF.running* : a simple boolean to let the caller enquire if the display is active
+
+The above all return an appropriate console text response for the outputTXT example class
+
+You can also enqire about the output state:
+* *outputRRF.running* : a simple boolean that is true if the display is active
 
 The output class keeps it's own copy of the OM so that it can rebuild it's display at will (eg for animation), this local copy is only updated when update() or showStatus() are called with the *model* parameter.
 

@@ -40,6 +40,7 @@ def pp(*args, **kwargs):
 
 # Do a minimum drama restart/reboot
 def restartNow(why):
+    print(out.restart())
     pp('Error: ' + why +'\nRestarting in ',end='')
     # Pause for a few seconds, then restart
     for c in range(config.rebootDelay,0,-1):

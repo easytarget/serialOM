@@ -24,6 +24,7 @@ class outputRRF:
         # Nothing much to do for text outputter
         if self.log:
             self.log.write('A reboot of the controller has been detected.\n')
+        return('output restarting')
 
     def update(self,model=None):
         # Updates the local model, triggers an output update
