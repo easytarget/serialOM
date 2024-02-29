@@ -53,17 +53,24 @@ class serialOM:
         https://github.com/Duet3D/RepRapFirmware/wiki/Object-Model-Documentation
 
 
-        arguments:
-            rrf :           Serial stream or similar
-            omKeys:         Dictionary with a per-mode list of keys to sync
-            requestTimeout: Timeout for response after sending a request (ms)
-            rawLog:         File object for the raw log, or None
-            quiet:          Print messages on startup and when soft errors are encountered
+        init arguments:
+            rrf :           serial object; or similar`
+            omKeys:         dict; per-mode lists of keys to sync, see below
+            requestTimeout: int; Timeout for response after sending a request (ms)
+            rawLog:         file object; where to write the raw log, or None
+            quiet:          bool; Print messages on startup and when soft errors are encountered
+
+                            omKeys = {'machineMode':['OMkey1','OMkey2',..],etc..}
+                                     Empty lists [] are allowed.
+                                     At least one machineMode must be specified.
 
         provides:
-            sendGcode(code):    Sends a Gcode to controller
-            getResponse(code):  Sends a Gcode and returns the response as a list of lines
+            sendGcode(code):    Sends a Gcode to controller and returns immediately.
+            getResponse(code):  Sends a Gcode and waits for a response ending in 'ok'.
+                                Returns the response as a list of lines.
+                                Returns an empty list on timeouts.
             update():           Updates local model from the controller
+                                Returns True for success, False if timeouts occurred
 
     '''
 

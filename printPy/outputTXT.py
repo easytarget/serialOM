@@ -5,12 +5,11 @@ from time import time
     It can be adapted for I2C displays etc
 '''
 
-# These are the only key sets in the OM we are interested in
-# We will always get the 'state' key from serialOM
-# All other keys need to be specified below
 
 class outputRRF:
     # ObjectModel keys for each supported mode
+    # We will always get the 'state' key from serialOM
+    # All other keys need to be specified below
     omKeys = {'FFF':['heat','tools','job','boards','network'],
               'CNC':['spindles','tools','move','job','boards','network'],
               'Laser':['move','job','boards','network']}

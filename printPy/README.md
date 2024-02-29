@@ -35,4 +35,13 @@ $ python printPy [interval_ms [port [baud]]]
 * Tested and developed on a RaspberryPI connected to my Duet2 wifi via USB/serial.
 
 ## output class:
-ToDo: describe; document required methods.
+The output class, *outputRRF* is, essentially, very simple.
+
+At init *outputRRF()* takes one optional argument: `outputLog`; a file handle for the output log (or None to disable the log)
+
+It provides two calls:
+* outputRRF.updateModel(model):
+  * Updates the ObjectModel being displayed.
+* outputRRF.showStatus():
+  * Shows extended status information
+
