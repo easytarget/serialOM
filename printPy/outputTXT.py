@@ -20,17 +20,26 @@ class outputRRF:
         # If running I2C displays etc this should reflect their status
         self.running = True
 
-    def updateModel(self,model):
-        # Updates the local model
-        self.OM = model
-        if model is None:
-            return False
-        return True
+    def restart(self):
+        # Nothing much to do for text outputter
+        if self.log:
+            self.log.write('A reboot of the controller has been detected.\n')
 
-    def showStatus(self):
+    def update(self,model=None):
+        # Updates the local model, triggers an output update
+        if model is None:
+            return ''
+        else:
+            self.OM = model
+            return self._showModel()
+
+    def showStatus(self,model=None):
+        # Show specific status details for the controller and PrintPy
+        # this could be expanded for microPython memory etc.
+        if model is not None:
+            self.OM = model
         if self.OM is None:
             # called while not connected.
-            # this could be expanded for microPython memory etc.
             return('No data available')
         # simple info about board and logger
         # needs 'boards' to be in the list of keys above..
@@ -43,8 +52,8 @@ class outputRRF:
         r += ' | mcu: %.1f' % self.OM['boards'][0]['mcuTemp']['current'] + 'C'
         return r
 
-    def showOutput(self):
-        # Shows the results on the console on demand.
+    def _showModel(self):
+        #  Constructs and returns the model data in human-readable form.
         #  copies to outputLog if one is specified
 
         def dhms(t):
@@ -207,7 +216,7 @@ class outputRRF:
 
     def _updateLaser(self):
         # Show laser info; not much to show since there is no seperate laser 'tool' (yet)
-        if self.OM['move']['currentMove']['laserPwm'] != None:
+        if self.OM['move']['currentMove']['laserPwm'] is not None:
             pwm = '%.0f%%' % (self.OM['move']['currentMove']['laserPwm'] * 100)
         else:
             pwm = 'not configured'

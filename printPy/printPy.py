@@ -136,8 +136,7 @@ if OM.machineMode == '':
     restartNow('Startup error while connecting to controller')
 
 # Update the display model and show overall Status
-out.updateModel(OM.model)
-print(out.showStatus())
+print(out.showStatus(OM.model))
 
 '''
     Main loop
@@ -153,9 +152,10 @@ while True:
         restartNow('Failed to fetch machine state\n' + str(e))
     # output the results if successful
     if haveData:
-        # output the results
-        out.updateModel(OM.model)
-        print(out.showOutput())
+        # pass the results to the output module and print any response
+        outputText = out.update(OM.model)
+        if outputText:
+             print(outputText)
     else:
         pp('Failed to fetch machine state')
     # Request cycle ended, wait for next
