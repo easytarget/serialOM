@@ -40,7 +40,7 @@ def pp(*args, **kwargs):
 
 # Do a minimum drama restart/reboot
 def restartNow(why):
-    print(out.restart())
+    print(out.restart(),end='')
     pp('Error: ' + why +'\nRestarting in ',end='')
     # Pause for a few seconds, then restart
     for c in range(config.rebootDelay,0,-1):
@@ -134,10 +134,10 @@ except Exception as e:
     restartNow('Failed to start ObjectModel communications\n' + str(e))
 
 if OM.machineMode == '':
-    restartNow('Startup error while connecting to controller')
+    restartNow('Failed to connect to controller, or unsupported controller mode.')
 
 # Update the display model and show overall Status
-print(out.showStatus(OM.model))
+print(out.showStatus(OM.model),end='')
 
 '''
     Main loop
@@ -150,15 +150,15 @@ while True:
     try:
         haveData = OM.update()
     except Exception as e:
-        restartNow('Failed to fetch machine state\n' + str(e))
+        restartNow('Error while fetching machine state\n' + str(e))
     # output the results if successful
     if haveData:
         # pass the results to the output module and print any response
         outputText = out.update(OM.model)
         if outputText:
-             print(outputText)
+             print(outputText,end='')
     else:
-        pp('Failed to fetch machine state')
+        pp('Failed to fetch ObjectModel data')
     # Request cycle ended, wait for next
     while ticks_diff(ticks_ms(),begin) < config.updateTime:
         sleep_ms(1)

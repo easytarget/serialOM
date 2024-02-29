@@ -24,7 +24,7 @@ class outputRRF:
         # Nothing much to do for text outputter
         if self.log:
             self.log.write('A reboot of the controller has been detected.\n')
-        return('output restarting')
+        return('output restarting\n')
 
     def update(self,model=None):
         # Updates the local model, triggers an output update
@@ -32,7 +32,7 @@ class outputRRF:
             return ''
         else:
             self.OM = model
-            return self._showModel()
+            return self._showModel() + '\n'
 
     def showStatus(self,model=None):
         # Show specific status details for the controller and PrintPy
@@ -51,7 +51,7 @@ class outputRRF:
         r += self.OM['state']['machineMode'] + '" mode\n      '
         r += 'Vin: %.1f' % self.OM['boards'][0]['vIn']['current'] + 'V'
         r += ' | mcu: %.1f' % self.OM['boards'][0]['mcuTemp']['current'] + 'C'
-        return r
+        return r + '\n'
 
     def _showModel(self):
         #  Constructs and returns the model data in human-readable form.

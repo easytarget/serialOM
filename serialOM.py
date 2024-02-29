@@ -111,7 +111,9 @@ class serialOM:
         self._print('making initial data set request')
         if self.update():
             self._print('connected to ObjectModel')
-        if self.machineMode == '':
+        else:
+            self.OM = self.defaultModel
+            self.machineMode = ''
             self._print('failed to obtain initial machine state')
 
 
@@ -338,6 +340,9 @@ class serialOM:
         success = True  # track (soft) failures
         verboseSeqs = self._seqRequest()
         verboseList = self._stateRequest(verboseSeqs)
+        if self.machineMode not in self.omKeys.keys():
+            self._print('unknown machine mode "' + self.machineMode + '"')
+            return False
         for key in self.omKeys[self.machineMode]:
             if not self._keyRequest(key, verboseList):
                 success = False
