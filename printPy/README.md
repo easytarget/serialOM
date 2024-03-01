@@ -37,32 +37,46 @@ $ python printPy [interval_ms [port [baud]]]
 # output class:
 The output class, `outputRRF` is, essentially, very simple.
 
-An example is presented in `outputTXT.py` that can log to the console and to a file.
+An example is presented in `outputTXT.py` that can log to the console and to a file with timestamps.
 
 ## Init:
-At init *outputRRF()* takes one optional argument: `log`; a file handle for the output log (or None to disable)
+```python
+from outputXXX import outputRRF
+```
+.. where `outputXXX` is the output class *source.py*
+```python
+out =  outputRRF(log=None)
+```
+At init *outputRRF()* takes one optional argument: `log`; a writeable file handle for an output log (or None to disable).
 
-It must set *outputRRF.omKeys* with the machine modes and keypairs it supports, *printPy* will pass this to *serialOM* (see the serialOM documentation)
+The class must provide the `out.omKeys` property with the machine modes and keypairs it supports, *printPy* will pass this to *serialOM* (see the serialOM documentation).
 
-Any necesscary hardware setup needs to happen during init, and the *running* flag set if this succeeds
+Any necesscary hardware setup needs to happen during init, and the `out.running` flag property set if this succeeds.
 
-## Use:
+## Methods and Properties:
 
-*outputRRF* provides two calls:
-* outputRRF.update(model):
-  * Updates the ObjectModel being displayed.
-  * *model* is an optional parameter
-* outputRRF.showStatus(model):
-  * Shows extended status information in response to a button press or other trigger
-  * *model* is an optional parameter
-  * not really used in the text outputter, aimed at standalone applications like PrintPy2040
+*outputRRF* provides two methods:
+```python
+outputRRF.update(model)
+```
+Updates the ObjectModel being displayed.
+* *model* is an optional parameter
+* Returns a string that will be logged to console by printPy
+```python
+outputRRF.showStatus(model):
+```
+Shows extended status information in response to a button press or other trigger
+* *model* is an optional parameter
+* Not really used by the text outputter, aimed at standalone applications like PrintPy2040
+* Returns a string that will be logged to console by printPy
 
-The above both return an appropriate console text response for the outputTXT example class
+There is only one public property:
 
-You can also enqire about the output state:
-* *outputRRF.running* : a simple boolean that is true if the display is active
+`out.running` : a simple boolean property that is true if the display is active
 
 ## Notes:
 The output class keeps it's own copy of the OM so that it can rebuild it's display at will (eg for animation), this local copy is only updated when update() or showStatus() are called with the *model* parameter.
 
-It is expected to be fully independent of the main *printPy* colection loop. Responding only to what it sees in the ObjectModel updates it is passed and doing appropriate animations on startup and when *showStatus()* or *restart()* are called. And choosing brightness levels and whether to turn on/off via the machine status, etc.
+The output class is expected to be fully independent of the main *printPy* loop. Responding only to what it sees in the ObjectModel updates it is passed and doing appropriate animations on startup and when *showStatus()* is called. 
+
+It should examine the machine status and uptime to decide when to show 'reboot', 'on', 'off', 'timeout' and other informational responses (splash screens). Screensavers and brightness levels should be derived this way too.
