@@ -129,7 +129,7 @@ See [printPy/README.md](printPy/README.md)
 
 Here is an example of starting *printPy.py* with a 10s update time late into a very small and fast print (it's PC-ABS, hence the temps.)
 
-```console
+```none
 $ python printPy 10000
 printPy.py is starting at: 2024-2-29 01:02:54 (device localtime)
 starting output
