@@ -23,7 +23,7 @@ class config():
     '''
     updateTime = 1000
     requestTimeout = updateTime * 0.66
-    rebootDelay = 8
+    rebootDelay = 3
 
     '''
         Logging Config:
