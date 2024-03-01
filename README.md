@@ -69,7 +69,7 @@ If the initial connection and update are successful the property `OM.machineMode
 
 The fetched ObjectModel is returned in the `OM.model` property as a dictionary of keys that match the keys obtained from the controller.
 
-### Methods:
+### Methods and Properties:
 The principle method is 
 ```python
 OM.update()
@@ -77,6 +77,10 @@ OM.update()
 This initiates a refresh and update of the *model* property from the controller. Returns `True` for success, `False` if timeouts occurred.
 
 *OM.update()* deals gracefully with `machineMode` changes and `upTime` rollbacks (controller reboots); refreshing the entire model and (re)setting `OM.machineMode` as needed.
+
+The `OM.model`property contains the fetched model as a dictionary.
+
+`OM.machineMode` will be set to the machine mode, or an empty string if not connected.
 
 #### There are two further methods provided by *serialOM* for convenience:
 ```python
