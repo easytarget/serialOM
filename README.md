@@ -28,7 +28,7 @@ OM  = serialOM(rrf, {'FFF':[],'CNC':[],'Laser':[]}, quiet=True)
 print('state: ' + OM.model['state']['status']
      + ', up: ' + str(OM.model['state']['upTime']) + 's')
 ```
-This will quietly connect and display the current machine state and uptime. Try setting `quiet=False` for in the `OM = serialOM()` init arguments to see a lot more detail of the connecction progress.
+This will quietly connect and display the current machine state and uptime. Try setting `quiet=False` in the `OM = serialOM()` init arguments to see a lot more detail of the connecction progress.
 
 If *serialOM* times out or fails to detect a RRF controller during initialisation `OM.machineMode` will be empty (`''`), otherwise it will reflect the controller mode; currently `'FFF'`, `'CNC'` or `'Laser'`.
 
