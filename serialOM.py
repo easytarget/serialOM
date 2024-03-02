@@ -60,6 +60,7 @@ class serialOM:
             requestTimeout: int; Timeout for response after sending a request (ms)
             rawLog:         file object; where to write the raw log, or None
             quiet:          bool; Print messages on startup and when soft errors are encountered
+            uart:           bool; enable microPython (UART) mode, default is (py)Serial mode
 
                             omKeys = {'machineMode':['OMkey1','OMkey2',..],etc..}
                                      Empty lists [] are allowed.
@@ -77,8 +78,9 @@ class serialOM:
             machineMode:        The current machine mode, string, or None if no response
     '''
 
-    def __init__(self, rrf, omKeys, requestTimeout=500, rawLog=None, quiet=False):
+    def __init__(self, rrf, omKeys, requestTimeout=500, rawLog=None, quiet=False, uart=False):
         self._rrf = rrf
+        self._uart = uart
         self._omKeys = omKeys
         self._requestTimeout = requestTimeout
         self._rawLog = rawLog
@@ -96,9 +98,12 @@ class serialOM:
         # a list of all possible keys we may need
         for mode in self._omKeys.keys():
             self._seqKeys = list(set(self._seqKeys) | set(self._omKeys[mode]))
-        # we want this to be set; a non blocking timeout
-        rrf.timeout = requestTimeout / 2500
-        rrf.write_timeout = rrf.timeout
+        if not self._uart:
+            # we want this to be set; a non blocking timeout in float(seconds)
+            # default is 1/10 of the request time
+            rrf.timeout = requestTimeout / 10000
+            rrf.write_timeout = rrf.timeout
+            # else: MicroPython: this MUST be set in the uart init()!
         # check for a valid response to a firmware version query
         self._print('checking for connected RRF controller')
         retries = 10
@@ -282,7 +287,10 @@ class serialOM:
         # send a gcode then block until it is sent, or error
         # first, absorb whatever is in our buffer
         try:
-            waiting = self._rrf.in_waiting     # CPython, microPython use 'any()'
+            if self._uart:
+                waiting = self._rrf.any()
+            else:
+                waiting = self._rrf.in_waiting
         except Exception as e:
             print(e)
             raise serialOMError('Failed to query length of input buffer : ' + repr(e)) from None
