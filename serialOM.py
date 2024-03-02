@@ -1,9 +1,9 @@
 from sys import implementation
 from json import loads
-if implementation is not 'micropython':
-    from timeStubs import sleep_ms,ticks_ms,ticks_diff  # CPython
-else:
+try:
     from time import sleep_ms,ticks_ms,ticks_diff  # microPython
+except:
+    from timeStubs import sleep_ms,ticks_ms,ticks_diff  # CPython
 # - these CPython standard libs will need to be provided locally for microPython
 from itertools import zip_longest
 from functools import reduce
