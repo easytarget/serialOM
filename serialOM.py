@@ -1,6 +1,9 @@
+from sys import implementation
 from json import loads
-from timeStubs import sleep_ms,ticks_ms,ticks_diff  # CPython
-#from time import sleep_ms,ticks_ms,ticks_diff  # microPython
+if implementation is not 'micropython':
+    from timeStubs import sleep_ms,ticks_ms,ticks_diff  # CPython
+else:
+    from time import sleep_ms,ticks_ms,ticks_diff  # microPython
 # - these CPython standard libs will need to be provided locally for microPython
 from itertools import zip_longest
 from functools import reduce
@@ -99,16 +102,16 @@ class serialOM:
             self._seqKeys = list(set(self._seqKeys) | set(self._omKeys[mode]))
         # set a non blocking timeout on the serial device
         # default is 1/10 of the request time
-        if `Serial` in str(type(rrf)):
+        if 'Serial' in str(type(rrf)):
             # PySerial
             rrf.timeout = requestTimeout / 10000
             rrf.write_timeout = rrf.timeout
-        elif `UART` in str(type(rrf)):
+        elif 'UART' in str(type(rrf)):
             # UART (micropython)
             self._uart = True
             # TEST TEST TEST, can we 'append' these parameters to the UART like this ??
             rrf.init(timeout = requestTimeout / 10, timeout_char = requestTimeout / 10)
-        else
+        else:
             self._print('Unable to determine serial stream type to enforce read timeouts!')
             self._print('please ensure these are set for your device to prevent serialOM blocking')
         # check for a valid response to a firmware version query
