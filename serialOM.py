@@ -3,10 +3,10 @@ from json import loads
 try:
     from time import sleep_ms,ticks_ms,ticks_diff  # microPython
 except:
-    from timeStubs import sleep_ms,ticks_ms,ticks_diff  # CPython
-# - these CPython standard libs will need to be provided locally for microPython
-from itertools import zip_longest
-from functools import reduce
+    from compatLib import sleep_ms,ticks_ms,ticks_diff  # CPython
+# - these CPython standard libs are provided locally for microPython compatibility
+from compatLib import zip_longest
+from compatLib import reduce
 
 '''
     General note:
