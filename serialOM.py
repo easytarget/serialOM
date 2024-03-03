@@ -151,9 +151,7 @@ class serialOM:
         # Construct the M409 command
         cmd = 'M409 F"' + OMflags + '" K"' + OMkey + '"'
         queryResponse = self.getResponse(cmd)
-        print(queryResponse)
         jsonResponse = self._onlyJson(queryResponse)
-        print(jsonResponse)
         if len(jsonResponse) == 0:
             return False
         else:
@@ -232,11 +230,11 @@ class serialOM:
     def _keyRequest(self,key,verboseList):
         # Do an individual key request using the correct verbosity
         if key in verboseList:
-            print('*',end='')  # debug
+            #print('*',end='')  # debug
             if not self._omRequest(key,'vnd99'):
                 return False;
         else:
-            print('.',end='')  # debug
+            #print('.',end='')  # debug
             if not self._omRequest(key,'fnd99'):
                  return False;
         return True
@@ -331,7 +329,7 @@ class serialOM:
         '''
         # Send the command to RRF
         self.sendGcode(cmd)
-        print(cmd)
+        #print(cmd)
         # And wait for a response
         requestTime = ticks_ms()
         queryResponse = []
@@ -339,25 +337,25 @@ class serialOM:
         while (ticks_diff(ticks_ms(),requestTime) < self._requestTimeout):
             # Read a character, tolerate and ignore decoder errors
             try:
-                chars = self._rrf.readln()
+                chars = self._rrf.readline()
             except Exception as e:
                 raise serialOMError('Serial read from controller failed : ' + repr(e)) from None
 
             if len(chars) == 0:
                 continue
-            print(chars, type(chars), end='-IN')
+            #print(chars, end='-IN\n')
 
             line = ''
-            for char in str(chars):
+            for char in chars.decode('ascii'):
                 #print(char,type(char))
                 if self._rawLog and char:
                     self._rawLog.write(str(char))
                 # store valid characters
                 if char in self._jsonChars:
-                    print(char,end='')
+                    #print(char,end='')
                     line += char
             queryResponse.append(line)
-            print('-LINE')
+            #print('-LINE')
 
             # if we see 'ok' at the line end break immediately from wait loop
             if len (line) >= 2:
@@ -370,7 +368,6 @@ class serialOM:
         success = True  # track (soft) failures
         verboseSeqs = self._seqRequest()
         verboseList = self._stateRequest(verboseSeqs)
-        print(verboseList)
         if self.machineMode not in self._omKeys.keys():
             self._print('unknown machine mode "' + self.machineMode + '"')
             return False

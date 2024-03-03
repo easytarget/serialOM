@@ -15,7 +15,7 @@ from sys import argv
     from machine import reset
 '''
 from serial import Serial
-from timeStubs import sleep_ms,ticks_ms,ticks_diff
+from compatLib import sleep_ms,ticks_ms,ticks_diff
 from time import localtime
 from sys import executable
 from os import execv
