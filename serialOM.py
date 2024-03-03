@@ -251,15 +251,13 @@ class serialOM:
 
         if not self._keyRequest('state',verboseSeqs):
             self._print('"state" key request failed')
-            return False
-        verboseList = verboseSeqs
         if self.machineMode != self.model['state']['machineMode']:
-            verboseList = cleanstart()
+            verboseSeqs = cleanstart()
         elif self._upTime > self.model['state']['upTime']:
-            verboseList = cleanstart()
-        self._upTime = self.model['state']['upTime']
+            verboseSeqs = cleanstart()
         self.machineMode = self.model['state']['machineMode']
-        return verboseList
+        self._upTime = self.model['state']['upTime']
+        return verboseSeqs
 
     def _seqRequest(self):
         # Send a 'seqs' request to the OM, updates local OM and returns
@@ -341,21 +339,21 @@ class serialOM:
             except Exception as e:
                 raise serialOMError('Serial read from controller failed : ' + repr(e)) from None
 
-            if len(chars) == 0:
+            if not chars:
                 continue
-            #print(chars, end='-IN\n')
+            print(chars, end='-IN\n')
 
             line = ''
-            for char in chars.decode('ascii'):
+            for char in chars:
                 #print(char,type(char))
                 if self._rawLog and char:
-                    self._rawLog.write(str(char))
+                    self._rawLog.write(chr(char))
                 # store valid characters
-                if char in self._jsonChars:
-                    #print(char,end='')
-                    line += char
+                if chr(char) in self._jsonChars:
+                    print(chr(char),end='')
+                    line += chr(char)
             queryResponse.append(line)
-            #print('-LINE')
+            print('-LINE')
 
             # if we see 'ok' at the line end break immediately from wait loop
             if len (line) >= 2:
