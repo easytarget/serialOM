@@ -26,7 +26,6 @@ class serialOMError(Exception):
         super().__init__(self.errMsg)
     def __str__(self):
         # we could test for the exact error here but not worth it imho
-        #print(self)
         return f'{self.errMsg}'
 
 class serialOM:
@@ -134,7 +133,6 @@ class serialOM:
             self.model = self._defaultModel
             self.machineMode = ''
             self._print('failed to obtain initial machine state')
-            print(self.model,self.machineMode)
 
 
     # To print, or not print, that is the question.
@@ -327,7 +325,6 @@ class serialOM:
         '''
         # Send the command to RRF
         self.sendGcode(cmd)
-        #print(cmd)
         # And wait for a response
         requestTime = ticks_ms()
         queryResponse = []
@@ -341,19 +338,15 @@ class serialOM:
 
             if not chars:
                 continue
-            print(chars, end='-IN\n')
 
             line = ''
             for char in chars:
-                #print(char,type(char))
                 if self._rawLog and char:
                     self._rawLog.write(chr(char))
                 # store valid characters
                 if chr(char) in self._jsonChars:
-                    print(chr(char),end='')
                     line += chr(char)
             queryResponse.append(line)
-            print('-LINE')
 
             # if we see 'ok' at the line end break immediately from wait loop
             if len (line) >= 2:
