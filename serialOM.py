@@ -335,18 +335,19 @@ class serialOM:
         # And wait for a response
         requestTime = ticks_ms()
         queryResponse = []
-        line = ''
         # only look for responses within the requestTimeout period
         while (ticks_diff(ticks_ms(),requestTime) < self._requestTimeout):
             # Read a character, tolerate and ignore decoder errors
             try:
-                chars = self._rrf.read()
+                chars = self._rrf.readln()
             except Exception as e:
                 raise serialOMError('Serial read from controller failed : ' + repr(e)) from None
-            if not chars:
+
+            if len(chars) == 0:
                 continue
             print(chars, type(chars), end='-IN')
 
+            line = ''
             for char in str(chars):
                 #print(char,type(char))
                 if self._rawLog and char:
@@ -354,14 +355,14 @@ class serialOM:
                 # store valid characters
                 if char in self._jsonChars:
                     print(char,end='')
-                    line += str(char)
-                elif char is '\n':
-                    queryResponse.append(line)
-                    # if we see 'ok' at the line end break immediately from wait loop
-                    if (line[-2:] == 'ok'):
+                    line += char
+            queryResponse.append(line)
+            print('-LINE')
+
+            # if we see 'ok' at the line end break immediately from wait loop
+            if len (line) >= 2:
+                if (line[-2:] == 'ok'):
                         break
-                    line = ''
-                    print('-LINE')
         return queryResponse
 
     def update(self):
