@@ -95,7 +95,7 @@ else:
 
 # create the OM handler
 try:
-    OM = serialOM(rrf, out.omKeys, config.requestTimeout, rawLog, config.quiet)
+    OM = serialOM(rrf, out.omKeys, rawLog, config.quiet)
 except Exception as e:
     restartNow('Failed to start ObjectModel communications\n' + str(e))
 
@@ -128,7 +128,7 @@ while True:
     # check output is running and restart if not
     if not out.running:
         restartNow('Output device has failed')
-    mem_info()
+    #mem_info()
     # Request cycle ended, wait for next
     while ticks_diff(ticks_ms(),begin) < config.updateTime:
         sleep_ms(1)

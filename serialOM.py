@@ -61,7 +61,6 @@ class serialOM:
         init arguments:
             rrf :           serial object; or similar`
             omKeys:         dict; per-mode lists of keys to sync, see below
-            requestTimeout: int; Timeout for response after sending a request (ms)
             rawLog:         file object; where to write the raw log, or None
             quiet:          bool; Print messages on startup and when soft errors are encountered
 
@@ -81,12 +80,12 @@ class serialOM:
             machineMode:        The current machine mode, string, or None if no response
     '''
 
-    def __init__(self, rrf, omKeys, requestTimeout=500, rawLog=None, quiet=False):
+    def __init__(self, rrf, omKeys, rawLog=None, quiet=False):
         self._rrf = rrf
         self._omKeys = omKeys
-        self._requestTimeout = int(requestTimeout)
         self._rawLog = rawLog
         self._quiet = quiet
+        self._requestTimeout = 250
         self._uart = False
         self._defaultModel = {'state':{'status':'unknown'},'seqs':None}
         self._jsonChars = bytearray(range(0x20,0x7F)).decode('ascii')
@@ -105,13 +104,13 @@ class serialOM:
         # default is 1/10 of the request time
         if 'Serial' in str(type(rrf)):
             # PySerial
-            rrf.timeout = requestTimeout / 10000
+            rrf.timeout = self._requestTimeout / 10000
             rrf.write_timeout = rrf.timeout
         elif 'UART' in str(type(rrf)):
             # UART (micropython)
             self._uart = True
-            rrf.init(timeout = int(requestTimeout / 2),
-                     timeout_char = int(requestTimeout / 2),
+            rrf.init(timeout = int(self._requestTimeout / 2),
+                     timeout_char = int(self._requestTimeout / 2),
                      rxbuf=4096)
         else:
             self._print('Unable to determine serial stream type to enforce read timeouts!')
@@ -162,6 +161,7 @@ class serialOM:
         # return JSON candidates from the query response
         if len(queryResponse) == 0:
             return []
+        '''
         jsonResponse = []
         nest = 0
         for line in queryResponse:
@@ -178,7 +178,8 @@ class serialOM:
                     elif nest == 0:
                         jsonResponse.append(json)
                         json = ''
-        return jsonResponse
+        return jsonResponse '''
+        return queryResponse
 
     def _updateOM(self,response,OMkey):
         # Merge or replace the local OM copy with results from the query
@@ -230,13 +231,15 @@ class serialOM:
 
     def _keyRequest(self,key,verboseList):
         # Do an individual key request using the correct verbosity
+        #print(key,end='')                              # debug
+        depth = 5
         if key in verboseList:
             #print('*',end='')  # debug
-            if not self._omRequest(key,'vnd99'):
+            if not self._omRequest(key,'vnd' + str(depth)):
                 return False;
         else:
             #print('.',end='')  # debug
-            if not self._omRequest(key,'fnd99'):
+            if not self._omRequest(key,'fnd' + str(depth)):
                  return False;
         return True
 
@@ -244,18 +247,23 @@ class serialOM:
         # sends a state request
         # handles machine mode and uptime changes
 
-        def cleanstart():
+        def cleanstart(why):
             # clean and reset the local OM and seqs, returns full seqs list
             self.model = self._defaultModel
             self._seqs = {}
+            self._print(why)
             return self._seqKeys
 
         if not self._keyRequest('state',verboseSeqs):
             self._print('"state" key request failed')
+        else:
+            pass
+            #print('S',end='')                                   # debug
         if self.machineMode != self.model['state']['machineMode']:
-            verboseSeqs = cleanstart()
+            verboseSeqs = cleanstart('machine mode is: ' +
+                                      self.model['state']['machineMode'])
         elif self._upTime > self.model['state']['upTime']:
-            verboseSeqs = cleanstart()
+            verboseSeqs = cleanstart('controller restarted')
         self.machineMode = self.model['state']['machineMode']
         self._upTime = self.model['state']['upTime']
         return verboseSeqs
@@ -264,11 +272,12 @@ class serialOM:
         # Send a 'seqs' request to the OM, updates local OM and returns
         # a list of keys where the sequence number has changed
         changed=[]
-        if self._seqs == {}:
+        if self._seqs == {}:                           # TODO, can put in init
             # no previous data, start from scratch
             for key in self._seqKeys:
                 self._seqs[key] = -1
         # get the seqs key, note and record all changes
+        #print('Q',end='')                                  # debug
         if self._omRequest('seqs','vnd99'):
             for key in self._seqKeys:
                 if self._seqs[key] != self.model['seqs'][key]:
@@ -340,9 +349,15 @@ class serialOM:
                 raise serialOMError('Serial read from controller failed : ' + repr(e)) from None
             if not readLine:
                 continue
-            if (readLine[-3:] == b'ok\n'):
+            if (readLine[-2:] == b'}\n'):
+                #print('!',end='')               # debug
+                queryResponse.append(readLine)
                 break
+            else:
+                pass
+                #print('?',end='')             # debug
             queryResponse.append(readLine)
+        #print(queryResponse)                 # debug
         for line in queryResponse:
             responseLine = ''
             for char in line:
@@ -352,6 +367,7 @@ class serialOM:
                 if chr(char) in self._jsonChars:
                     responseLine += chr(char)
             response.append(responseLine)
+            #print('+',end='')             # debug
         collect()
         return response
 
