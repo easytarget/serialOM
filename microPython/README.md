@@ -1,2 +1,4 @@
 # This is the microPython port of serialOM
-Currently NO progress.
+Development ongoing
+* Currently Runs,
+* NO documentation progress.

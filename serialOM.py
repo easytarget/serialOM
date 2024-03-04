@@ -7,6 +7,8 @@ except:
 # - these CPython standard libs are provided locally for microPython compatibility
 from compatLib import zip_longest
 from compatLib import reduce
+from gc import collect
+from micropython import mem_info
 
 '''
     General note:
@@ -82,7 +84,7 @@ class serialOM:
     def __init__(self, rrf, omKeys, requestTimeout=500, rawLog=None, quiet=False):
         self._rrf = rrf
         self._omKeys = omKeys
-        self._requestTimeout = requestTimeout
+        self._requestTimeout = int(requestTimeout)
         self._rawLog = rawLog
         self._quiet = quiet
         self._uart = False
@@ -108,8 +110,9 @@ class serialOM:
         elif 'UART' in str(type(rrf)):
             # UART (micropython)
             self._uart = True
-            # TEST TEST TEST, can we 'append' these parameters to the UART like this ??
-            rrf.init(timeout = int(requestTimeout / 10), timeout_char = int(requestTimeout / 10))
+            rrf.init(timeout = int(requestTimeout / 2),
+                     timeout_char = int(requestTimeout / 2),
+                     rxbuf=4096)
         else:
             self._print('Unable to determine serial stream type to enforce read timeouts!')
             self._print('please ensure these are set for your device to prevent serialOM blocking')
@@ -124,7 +127,7 @@ class serialOM:
             self._print('failed..retrying')
             sleep_ms(self._requestTimeout)
         self._print('controller is connected')
-        sleep_ms(self._requestTimeout)
+        sleep_ms(100)
         # Do initial update to fill local model`
         self._print('making initial data set request')
         if self.update():
@@ -328,31 +331,29 @@ class serialOM:
         # And wait for a response
         requestTime = ticks_ms()
         queryResponse = []
+        response=[]
         # only look for responses within the requestTimeout period
         while (ticks_diff(ticks_ms(),requestTime) < self._requestTimeout):
-            # Read a character, tolerate and ignore decoder errors
             try:
-                chars = self._rrf.readline()
+                readLine = self._rrf.readline()
             except Exception as e:
                 raise serialOMError('Serial read from controller failed : ' + repr(e)) from None
-
-            if not chars:
+            if not readLine:
                 continue
-
-            line = ''
-            for char in chars:
+            if (readLine[-3:] == b'ok\n'):
+                break
+            queryResponse.append(readLine)
+        for line in queryResponse:
+            responseLine = ''
+            for char in line:
                 if self._rawLog and char:
                     self._rawLog.write(chr(char))
                 # store valid characters
                 if chr(char) in self._jsonChars:
-                    line += chr(char)
-            queryResponse.append(line)
-
-            # if we see 'ok' at the line end break immediately from wait loop
-            if len (line) >= 2:
-                if (line[-2:] == 'ok'):
-                        break
-        return queryResponse
+                    responseLine += chr(char)
+            response.append(responseLine)
+        collect()
+        return response
 
     def update(self):
         # Do an update cycle; get new data and update local OM
