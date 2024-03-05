@@ -1,3 +1,5 @@
+from time import sleep,time
+
 '''
     Provides compatibility for serialOM between CPython and microPython
 
@@ -49,8 +51,6 @@ def reduce(function, iterable, initializer=None):
     for element in it:
         value = function(value, element)
     return value
-
-from time import sleep,time
 
 def ticks_ms():
     return int(time() * 1000)
