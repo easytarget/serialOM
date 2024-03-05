@@ -11,8 +11,8 @@ OM = serialOM(rrf, {'FFF':['network'],
 print('controller is in "' + OM.model['state']['machineMode'] + '" mode')
 print('> M122')
 response = OM.getResponse('M122')
-for line in response[:8] + ['<truncated>']:
-    print('>> ' + line)
+for line in response[:10] + ['<truncated>']:
+    print('>> ' + line.strip('\n'))
 
 while True:
     print(OM.model['network']['name'] + ' :: state: '
