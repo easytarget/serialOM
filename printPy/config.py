@@ -18,11 +18,9 @@ class config():
     '''
         Timing and timeout config:
         updateTime:     (int, ms)  Basic time interval between update cycles
-        requestTimeout: (int, ms)  maximum time to wait for response after sending request
         rebootDelay:    (int) Countdown in seconds when auto-restarting/rebooting
     '''
     updateTime = 1000
-    requestTimeout = updateTime * 0.66
     rebootDelay = 3
 
     '''

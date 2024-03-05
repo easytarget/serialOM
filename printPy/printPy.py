@@ -81,7 +81,6 @@ else:
 # Arguments, optional, #1 is update timer, #2 serial device, #3 baud.
 if len(argv) > 1:
     config.updateTime = int(argv[1])
-    config.requestTimeout = int(config.updateTime * 0.66)
 if len(argv) > 2:
     config.devices = [str(argv[2])]
 if len(argv) > 3:
@@ -135,7 +134,7 @@ else:
 
 # create the OM handler
 try:
-    OM = serialOM(rrf, out.omKeys, config.requestTimeout, rawLog, config.quiet)
+    OM = serialOM(rrf, out.omKeys, rawLog, config.quiet)
 except Exception as e:
     restartNow('Failed to start ObjectModel communications\n' + str(e))
 
