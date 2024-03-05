@@ -1,5 +1,11 @@
 '''
-    stub functions for microPython to emulate Cpython standard functions
+    Provides compatibility for serialOM between CPython and microPython
+
+    zip_longest(), repeat() and reduce() are in the standard
+        CPython libs, but not microPython
+
+    ticks_ms(), ticks_diff() and sleep_ms() emulate the standard microPython
+        timing functions which prefers int(ms) to float(seconds)
 '''
 
 def zip_longest(*args, fillvalue=None):
@@ -33,6 +39,7 @@ def repeat(object, times=None):
     else:
         for i in range(times):
             yield object
+
 def reduce(function, iterable, initializer=None):
     it = iter(iterable)
     if initializer is None:
@@ -42,10 +49,6 @@ def reduce(function, iterable, initializer=None):
     for element in it:
         value = function(value, element)
     return value
-
-'''
-    stub functions for CPython to emulate the micropython native time (nee.utime) lib
-'''
 
 from time import sleep,time
 
