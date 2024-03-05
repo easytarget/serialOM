@@ -1,53 +1,53 @@
 from sys import implementation
 from json import loads
+from gc import collect
 try:
     from time import sleep_ms,ticks_ms,ticks_diff  # microPython
 except:
     from compatLib import sleep_ms,ticks_ms,ticks_diff  # CPython
-# - these CPython standard libs are provided locally for microPython compatibility
 from compatLib import zip_longest
 from compatLib import reduce
-from gc import collect
 
 '''
     General note:
-    This class was developed with an eye to providing microPython compatibility
-    There are a lot of microPython related comments in here, ignore them for now.
+    This class is designd to run on either CPython (with PySerial) or on
+    microPython using the machine.UART interface.
+
+    This should be opaque to the user, we select the correct serial vs uart
+    functions where this differs (timing options and flushing rx buffer)
 '''
 
 class serialOMError(Exception):
     '''
         Our own Exception class, used to handle comms errors and enable
-        easy soft-fail on communications errors since the calling program
-        can test for 'serialOMError' in a try/except block.
+        easy soft-fail on communications failures by the calling program
+        testing for 'serialOMError' in a try/except block.
     '''
 
     def __init__(self, errMsg):
         self.errMsg = errMsg
         super().__init__(self.errMsg)
     def __str__(self):
-        # we could test for the exact error here but not worth it imho
         return f'{self.errMsg}'
 
 class serialOM:
     '''
-        Object Model communications tools class provides a class with
-        specific functions used to fetch and process the RRF Object Model
+        Object Model communications class.
+        Provides specific functions used to fetch and process the RRF Object Model
         via a serial/stream interface.
 
         We make two different types of request on a 'per key' basis:
-          Verbose status requests to read the full key
-          Frequent requests that just return the frequently changing key values
+          Verbose status requests to read the full key.
+          Frequent requests that just return the frequently changing key values.
         Verbose requests are more 'expensive' in terms of processor and data use,
         so we only make these when we need to.
 
         There is a special key returned by M409; `seqs`, which returns an
-        incremental count of changes to the values /not/ returned with the
-        frequent update requests. This is used to trigger verbose updates
-        when necessary for all the keys we monitor.
+        incremental count of changes to the 'infrequent' values. This is
+        used to trigger verbose updates when necessary for the keys we monitor.
 
         If either the machine mode changes, or the uptime rolls-back a clean
-        and rebuild is done on the local object model copy
+        and rebuild is done on the local object model copy.
 
         Serial communications errors will raise a 'serialOMError' exception
         with the original error in it's message body.
@@ -58,36 +58,49 @@ class serialOM:
 
 
         init arguments:
-            rrf :           serial object; or similar`
+            rrf :           PySerial or micropython UART object
             omKeys:         dict; per-mode lists of keys to sync, see below
             rawLog:         file object; where to write the raw log, or None
-            quiet:          bool; Print messages on startup and when soft errors are encountered
+            quiet:          bool; suppress messages on startup and when soft errors are encountered
 
                             omKeys = {'machineMode':['OMkey1','OMkey2',..],etc..}
                                      Empty lists [] are allowed.
                                      At least one machineMode must be specified.
 
-        provides:
+        methods:
             sendGcode(code):         Sends a Gcode to controller and returns immediately.
             getResponse(code,json):  Sends a Gcode and waits for a response.
-                                     If 'json' is True it will exist as soon as a json
+                                     If 'json' is True it will exit as soon as a json
                                      line is seen, and only returns that line.
                                      Otherwise returns the response as a list of lines until
-                                     the read timeout. No response gives an empty list
+                                     the read timeout. No response returns an empty list
             update():                Updates local model from the controller
                                      Returns True for success, False if timeouts occurred
 
-            model:              Dictionary property with the fetched model
+        properties:
+            msdel:              Dictionary with the fetched model
             machineMode:        The current machine mode, string, or None if no response
+
+        There are a few defaults set below, of note are:
+            self._requestTimeout : Absolute maximum time to wait for any response, int(ms)
+                                   This defines the maximum blocking time per key! The
+                                   total blocking time is the sum total of these
+                                   - for a normal update() we always fetch the seqs and state
+                                     keys, plus the per mode keys defined in omKeys
+            self._depth          : the maximum depth specified for M409 requests, default = all
+            self._uartRxBuf      : microPython specific: UART input buffer size, the default
+                                   of 512 bytes is probably OK, but increasing is not a bad idea
     '''
 
     def __init__(self, rrf, omKeys, rawLog=None, quiet=False):
         self._rrf = rrf
+        self._uart = False
         self._omKeys = omKeys
         self._rawLog = rawLog
         self._quiet = quiet
         self._requestTimeout = 250
-        self._uart = False
+        self._depth = 99
+        self._uartRxBuf = 2048
         self._defaultModel = {'state':{'status':'unknown'},'seqs':None}
         self._seqs = {}
         self._seqKeys = ['state']  # we always check 'state'
@@ -113,7 +126,7 @@ class serialOM:
             self._uart = True
             rrf.init(timeout = int(self._requestTimeout / 2),
                      timeout_char = int(self._requestTimeout / 2),
-                     rxbuf=4096)
+                     rxbuf = self._uartRxBuf)
         else:
             self._print('Unable to determine serial stream type to enforce read timeouts!')
             self._print('please ensure these are set for your device to prevent serialOM blocking')
@@ -212,14 +225,13 @@ class serialOM:
     def _keyRequest(self,key,verboseList):
         # Do an individual key request using the correct verbosity
         #print(key,end='')                              # debug
-        depth = 5
         if key in verboseList:
             #print('*',end='')  # debug
-            if not self._omRequest(key,'vnd' + str(depth)):
+            if not self._omRequest(key,'vnd' + str(self._depth)):
                 return False;
         else:
             #print('.',end='')  # debug
-            if not self._omRequest(key,'fnd' + str(depth)):
+            if not self._omRequest(key,'fnd' + str(self._depth)):
                  return False;
         return True
 
