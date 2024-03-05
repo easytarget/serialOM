@@ -2,11 +2,37 @@ from time import time
 
 '''
     This is a TEXT (REPL/console) output class for PrintPY
-    It can be adapted for I2C displays etc
+    It also logs to a log file
+        This is optional
+        Entries are pre-pended with an epoch timestamp
+        Only recieved data is logged, in a predictable format
+    It can serve as a basis for adapting to drive I2C displays etc
+        It keeps a 'local' OM so that displays can be refreshed
+        independently of the main OM update loop
+    See the comments in the printPy 'README.md' for more
 '''
 
 
 class outputRRF:
+    '''
+        arguments:
+            log : log file object or None to disable.
+
+        methods:
+            update(model,hostinfo) : Updates the local model copy and
+                returns a string with the human-readable machine state info.
+                Writes to logfile with timestamp if required.
+                hostinfo is optional, it will be prepended if present.
+            showStatus(model,hostinfo) : Updates the local model copy and
+                returns a 'status' block.
+                Aimed at display devices to show extra info when triggered.
+
+        properties:
+            omKeys       : see below
+            running      : (bool) can be set False if the output device fails
+            statusActive : (bool) set True while a status is being displayed
+'''
+
     # ObjectModel keys for each supported mode
     # We will always get the 'state' key from serialOM
     # All other keys need to be specified below
@@ -19,26 +45,31 @@ class outputRRF:
         self._OM = None
         # If running I2C displays etc this should reflect their status
         self.running = True
+        self.statusActive = False
 
     def update(self,model=None, hostInfo=None):
-        # Updates the local model, triggers an output update
+        # Updates the local model, returns the current status text
         if model is not None:
             self._OM = model
         if self._OM is None:
-            # called while not connected.
             return('no update data available\n')
-        elif hostInfo:
-            return hostInfo + ' || ' + self._showModel() + '\n'
-        return self._showModel() + '\n'
+        if hostInfo:
+            r = hostInfo + ' || ' + self._showModel() + '\n'
+        else:
+            r = self._showModel() + '\n'
+        if self._log:
+            self._log.write('[' + str(int(time())) + '] ' + r + '\n')
+        return r
 
     def showStatus(self, model=None, hostInfo=None):
-        # Show specific status details for the controller and PrintPy
+        # Returns specific status details for the controller and PrintPy
         # this could be expanded for microPython memory etc.
         if model is not None:
             self._OM = model
         if self._OM is None:
             # called while not connected.
             return('no data available\n')
+        self.statusActive = True
         # simple info about board and logger
         # needs 'boards' to be in the list of keys above..
         r = 'info: '
@@ -53,7 +84,14 @@ class outputRRF:
         # Return results
         if self._log:
             self._log.write('[' + str(int(time())) + '] ' + r + '\n')
+        self.statusActive = False
         return r + '\n'
+
+    '''
+        All the routines below tediously walk/grok the OM and return
+        a stringlet with the data they find, this is then concatenated
+        into a string that is passed back to the caller.
+    '''
 
     def _showModel(self):
         #  Constructs and returns the model data in human-readable form.
@@ -102,8 +140,6 @@ class outputRRF:
                 r += self._updateLaser()
         r += self._updateMessages()
         # Return results
-        if self._log:
-            self._log.write('[' + str(int(time())) + '] ' + r + '\n')
         return r
 
     def _updateCommon(self):
@@ -130,11 +166,11 @@ class outputRRF:
         return r
 
     def _updateAxes(self):
-        # Display all configured axes workplace and machine position, plus state.
+        # Display all configured axes values (workplace and machine), plus state.
         ws = self._OM['move']['workplaceNumber']
         r = ' | axes: '
         m = ''      # machine pos
-        offset = False   # workspace offset from Machine Pos?
+        offset = False   # is the workspace offset from machine co-ordinates?
         homed = False   # are any of the axes homed?
         if self._OM['move']['axes']:
             for axis in self._OM['move']['axes']:
@@ -149,8 +185,10 @@ class outputRRF:
                         r += ' ' + axis['letter'] + ':?'
                         m += ' ?'
             if homed:
+                # Show which workspace we have selected when homed
                 r += ' (' + str(ws + 1) + ')'
             if offset:
+                # Show machine position if workspace is offset
                 r += '(' + m[1:] + ')'
         return r
 

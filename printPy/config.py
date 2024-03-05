@@ -1,11 +1,11 @@
 '''
-    Set the serial device path and baud rate here, etc.
+    configuration file for printPy.py
 '''
 
 class config():
     '''
         Serial Device Config:
-        devices:  (list, strings) devices to try when connecting
+        devices:  (list[strings]) devices to try when connecting
                   - a list is used because under linux the /dev/ttyACM* and /dev/ttyUSB*
                     devices can wander between 0 and 1 when the controller reboots.
         baud:     (int) Serial baud rate; should match the setting used in config.g
