@@ -135,18 +135,21 @@ class outputRRF:
         r = ' | axes: '
         m = ''      # machine pos
         offset = False   # workspace offset from Machine Pos?
+        homed = False   # are any of the axes homed?
         if self._OM['move']['axes']:
             for axis in self._OM['move']['axes']:
                 if axis['visible']:
                     if axis['homed']:
-                       r += ' ' + axis['letter'] + ':' + "%.2f" % (axis['machinePosition'] - axis['workplaceOffsets'][ws])
-                       m += ' ' + "%.2f" % (axis['machinePosition'])
-                       if axis['workplaceOffsets'][ws] != 0:
-                           offset = True
+                        homed = True
+                        r += ' ' + axis['letter'] + ':' + "%.2f" % (axis['machinePosition'] - axis['workplaceOffsets'][ws])
+                        m += ' ' + "%.2f" % (axis['machinePosition'])
+                        if axis['workplaceOffsets'][ws] != 0:
+                            offset = True
                     else:
-                       r += ' ' + axis['letter'] + ':?'
-                       m += ' ?'
-            r += ' (' + str(ws + 1) + ')'
+                        r += ' ' + axis['letter'] + ':?'
+                        m += ' ?'
+            if homed:
+                r += ' (' + str(ws + 1) + ')'
             if offset:
                 r += '(' + m[1:] + ')'
         return r
