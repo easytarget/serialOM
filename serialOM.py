@@ -68,12 +68,14 @@ class serialOM:
                                      At least one machineMode must be specified.
 
         provides:
-            sendGcode(code):    Sends a Gcode to controller and returns immediately.
-            getResponse(code):  Sends a Gcode and waits for a response ending in 'ok'.
-                                Returns the response as a list of lines.
-                                Returns an empty list on timeouts.
-            update():           Updates local model from the controller
-                                Returns True for success, False if timeouts occurred
+            sendGcode(code):         Sends a Gcode to controller and returns immediately.
+            getResponse(code,json):  Sends a Gcode and waits for a response.
+                                     If 'json' is True it will exist as soon as a json
+                                     line is seen, and only returns that line.
+                                     Otherwise returns the response as a list of lines until
+                                     the read timeout. No response gives an empty list
+            update():                Updates local model from the controller
+                                     Returns True for success, False if timeouts occurred
 
             model:              Dictionary property with the fetched model
             machineMode:        The current machine mode, string, or None if no response
@@ -115,7 +117,7 @@ class serialOM:
         else:
             self._print('Unable to determine serial stream type to enforce read timeouts!')
             self._print('please ensure these are set for your device to prevent serialOM blocking')
-        # check for a valid response to a firmware version query
+        # start the handler
         self._start()
 
     def _start(self):
@@ -154,7 +156,7 @@ class serialOM:
         '''
         # Construct the M409 command
         cmd = 'M409 F"' + OMflags + '" K"' + OMkey + '"'
-        queryResponse = self.getResponse(cmd)
+        queryResponse = self.getResponse(cmd, json=True)
         if len(queryResponse) == 0:
             return False
         else:
@@ -317,10 +319,12 @@ class serialOM:
         if self._rawLog:
             self._rawLog.write("> " + code + "\n")
 
-    def getResponse(self, cmd):
+    def getResponse(self, cmd, json=False):
         '''
             Sends a query and waits for response data,
             returns a list of response lines, or None
+            If 'json' is set we exit immediately when
+            a potential JSON canidate is seen.
         '''
         # Send the command to RRF
         self.sendGcode(cmd)
@@ -342,10 +346,11 @@ class serialOM:
                 continue
             if self._rawLog:
                 self._rawLog.write(readLine)
-            if (readLine[:1] == '{') and (readLine[-2:] == '}\n'):
+            if (readLine[:1] == '{') and (readLine[-2:] == '}\n') and json:
                 response.append(readLine)
                 break
-            response.append(readLine)
+            if not json:
+                response.append(readLine)
         # now have either a 'json-like' string or a timeout, cleanup and return
         collect()
         return response
