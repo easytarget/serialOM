@@ -304,7 +304,7 @@ class serialOM:
                 raise serialOMError('Failed to flush input buffer : ' + repr(e)) from None
             if self._rawLog:
                 try:
-                    self._rawLog.write(junk).decode('ascii')
+                    self._rawLog.write(junk.decode('ascii'))
                 except:
                     pass  # just silently ignore decode failures here
 
@@ -315,7 +315,7 @@ class serialOM:
             raise serialOMError('Gcode serial write failed : ' + repr(e)) from None
         # log what we sent
         if self._rawLog:
-            self._rawLog.write("\n> " + code + "\n")
+            self._rawLog.write("> " + code + "\n")
 
     def getResponse(self, cmd):
         '''

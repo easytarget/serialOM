@@ -219,6 +219,8 @@ class outputRRF:
             for tool in self._OM['tools']:
                 if tool['spindle'] != -1:
                     r += showSpindle(tool['name'],tool['spindle'])
+        if len(r) == 0:
+            r += ' | spindle: not configured'
         return r
 
     def _updateLaser(self):
