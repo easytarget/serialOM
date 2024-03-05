@@ -4,7 +4,7 @@ import ssd1306
 import select
 from neopixel import NeoPixel
 import json
-from functools import reduce
+from compatLib import reduce
 
 print("PrintPy: Starting")
 # Hardware
@@ -43,7 +43,7 @@ def setRGB(state=(False,False,False)):
     rgbR.value(not state[0])   # pins are inverted
     rgbG.value(not state[1])
     rgbB.value(not state[2])
-    
+
 setRGB()
 
 # Serial
@@ -60,10 +60,10 @@ def sendGcode(code=""):
 
 display0.rect(0, 0, 127, 16, 1)
 display0.rect(10, 20, 107, 43, 1)
-display0.text('Hello', 44, 5, 1)
+display0.text('serialOM', 44, 5, 1)
 display1.rect(0, 0, 127, 16, 1)
 display1.rect(10, 20, 107, 43, 1)
-display1.text('World', 44, 5, 1)
+display1.text('demo', 44, 5, 1)
 display0.show()
 display1.show()
 
@@ -119,22 +119,21 @@ while True:
             pixel[0] = (intensity,intensity,intensity) # = white = packet error
             print("Invalid data recieved: " + str(packet))
         pixel.write()
-        
-    waiting = int(time.ticks_diff(time.ticks_ms(), start))  # How long since we sent the last request?
-    
+
     if (flashing and (time.ticks_diff(time.ticks_ms(), flashtime) >= flashspeed)):
         flashing = False
         print("-", end="")
         pixel[0]=(0,0,0)
         pixel.write()
 
+    waiting = int(time.ticks_diff(time.ticks_ms(), start))  # How long since we sent the last request?
     if (waiting >= 1000):
         print(".", end="")
         start = time.ticks_ms()  # reset the timer
         sendGcode('M409 F"fnd99"')     # Send a new packet request
         setRGB(rgbstate)         # Rotate the onboard RGB
         rgbstate = (rgbstate[2],rgbstate[0],rgbstate[1])
-        
+
     # display runtime in mins and secs for demo
     now = int(time.ticks_diff(time.ticks_ms(), begin))
     secs = int((now / 1000) % 60)
@@ -146,6 +145,8 @@ while True:
     if "status" in rrfstate:
         display0.rect(1, 1, 125, 14, 0, True)
         display0.text("State: " + rrfstate["status"], 10, 5, 1)
+        display1.rect(1, 1, 125, 14, 0, True)
+        display2.text("RRF Up: " + str(rrfstate["upTime"]), 10, 5, 1)
     display0.show()
     display1.show()
 

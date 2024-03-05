@@ -1,15 +1,13 @@
-from sys import exit
 # Import our local classes and config
 from serialOM import serialOM
 from outputTXT import outputRRF
 from config import config
-
-# Common classes between CPython and microPython
+# The microPython standard libs
+from sys import exit
 from gc import collect,mem_free
 from machine import UART
 from time import sleep_ms,ticks_ms,ticks_diff,localtime
 from machine import reset
-
 
 '''
     PrintMPy is a serialOM.py loop for MicroPython devices.

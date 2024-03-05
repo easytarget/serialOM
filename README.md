@@ -1,20 +1,24 @@
 # serialOM.py
-A RepRapFirmware [ObjectModel](https://github.com/Duet3D/RepRapFirmware/wiki/Object-Model-Documentation) serial access tool for Python3
+A RepRapFirmware [ObjectModel](https://github.com/Duet3D/RepRapFirmware/wiki/Object-Model-Documentation) serial access tool for Python3 and microPython 1.22
 
 **serialOM** implements a fetch and update cycle using [`M409`](https://docs.duet3d.com/User_manual/Reference/Gcodes#m409-query-object-model) commands to query the ObjectModel on the controller, the responses are gathered and merged into a local Dictionary structure. That can be accessed to drive displays, loggers and more.
 
 ## Requirements:
+### CPython
 * `PySerial` (https://pyserial.readthedocs.io/)
   * *serialOM* expects to be passed a PySerial object (but other serial/stream devices may work too).
+### microPython
+* A well specified microPython based MCU with the latest official MPY firmware on it.
+#### common
 * A suitable RRF USB/serial/UART device specified with '[M575](https://docs.duet3d.com/User_manual/Reference/Gcodes#m575-set-serial-comms-parameters)' in `config.g` to connect to.
   * For USB set `M575 P0 S2` in your config, this will set the USB port correctly.
-  * Other UART ports should also use `S2` as the port mode (`S0` also works)
+  * Other UART ports should use `S0` as the port mode (`S2` also works).
   * CRC/Checksum modes are *not* supported, this includes the default `S1` mode.
-* `timeStubs.py`: Already provided; a local set of stubs for cross-python compatibility.
+* `compatLib.py`: Already provided; a local set of stubs for cross-python compatibility.
   * Keep this in the same folder as `serialOM.py`.
 
 ## Overview:
-**serialOM()** takes a `Serial()` object at init, and a dictionary with the OM keys to gather for each machine mode. 
+**serialOM()** takes a `Serial()` object at init, and a dictionary with the OM keys to gather for each machine mode.
 
 It returns a *serialOM* object, with the `model` property populated with the requested keys (and the 'state' key)
 
@@ -37,8 +41,8 @@ The provided 'miniDemo.py' script is more detailed and shows the use of the `OM.
 ### Blocking:
 When being initialised, updated or making requests *serialOM* is blocking, it implements it's own request timeouts and will return if the connected device times out. This 'per request' timeout can be passed  at init(). During update()s serialOM will make 2 requests minimum, plus one request per additional OM key.
 
-The `Serial()` device neeeds to have it's blocking timeouts set lower than the overall Request timeout. This is done during init by *serialOM* itself and does not need to be specified when creating a PySerial  object. 
-* If adapting for other serial classes than PySerial you need to set the blocking correctly; for instance the microPython `UART` class only allows timeouts to be set as init arguments.
+The `Serial()` device neeeds to have it's blocking timeouts set lower than the overall Request timeout. This is done during init by *serialOM* itself and does not need to be specified when creating PySerial ot UART objects.
+* If adapting for other serial classes than PySerial/UART you need to set the blocking correctly at init.
 
 ### Exceptions:
 *serialOM* catches all exceptions coming from `serial` devices during read and write operations and will raise it's own `serialOMError` exception in response, with the original exception in the body. This allows the calling script to retry/re-initialise the connection as needed (handy for USB serial which disconnects when the controller reboots).
@@ -56,13 +60,12 @@ OM = serialOM(rrf, omKeys, requestTimeout=500, rawLog=None, quiet=False)
 ```
 where:
 ```console
-rrf            = a pyserial.Serial object; or similar
+rrf            = a pyserial.Serial or machine.UART object; or similar
 omKeys         = per-mode lists of keys to sync, (dict, see below)
                  omKeys = {'machineMode':['OMkey1','OMkey2',..],etc..}
                           Empty lists [] are allowed.
                           At least one machineMode must be specified.
-requestTimeout = Timeout for response after sending a request (int, ms)
-rawLog         = raw log, or None (writable file object) 
+rawLog         = raw log, or None (writable file object)
 quiet          = Suppress info messages (bool)
 ```
 If the initial connection and update are successful the property `OM.machineMode` will be populated, otherwise it will return an empty string.
@@ -70,7 +73,7 @@ If the initial connection and update are successful the property `OM.machineMode
 The fetched ObjectModel is returned in the `OM.model` property as a dictionary of keys that match the keys obtained from the controller.
 
 ### Methods and Properties:
-The principle method is 
+The principle method is
 ```python
 OM.update()
 ```
@@ -78,7 +81,7 @@ This initiates a refresh and update of the *model* property from the controller.
 
 *OM.update()* deals gracefully with `machineMode` changes and `upTime` rollbacks (controller reboots); refreshing the entire model and (re)setting `OM.machineMode` as needed.
 
-The `OM.model`property contains the fetched model as a dictionary.
+The `OM.model` property contains the fetched model as a dictionary.
 
 `OM.machineMode` will be set to the machine mode, or an empty string if not connected.
 
@@ -88,9 +91,10 @@ serialOM.sendGcode('code')
 ```
 Sends the specified `code` to the controller, has no return value.
 ```python
-serialOM.getResponse('code')
+serialOM.getResponse('code',json)
 ```
-Sends `code` and waits for a response ending with `ok`, returns a list of recieved lines. Conforms to the request timeout as described above and returns an empty list if no valid response recieved.
+Sends `code` and waits for a response, if `json` is true it returns as soon as it sees a line beginning with `{` and ending with `}` with that as a single list item. Otherwise it waits for the requestTimeout and returns a list of all recieved lines.
+Conforms to the request timeout as described above and returns an empty list if no valid response recieved.
 
 ## Operation:
 *serialOM* Implements a RRF ObjectModel fetch and update cycle based on using `[M409](https://docs.duet3d.com/User_manual/Reference/Gcodes#m409-query-object-model)` commands to query the ObjectModel on the controller, the responses are gathered and merged into a local Dictionary structure.
@@ -117,9 +121,11 @@ Sends `code` and waits for a response ending with `ok`, returns a list of reciev
   * You can specify a 'raw' log file handle at init; this is handy when debugging but will fill very rapidly and should never be used 'in production'!
   * Published under the CC0 (Creative Commons Zero) Licence; use however you want! Dont blame me if it all goes wrong..
 
-# printPy.py:
+# printPy.py for CPython:
+*For microPython see the equivalent 'printMPy.py' in the (printMPy)[printMPy] folder and it's (README)[printMPy/README.md]*
+
 *serialOM* comes with a full implementation of a datalogging script in the `printPy` folder.
-This uses the features above to implement a robust data gathering loop. This, in turn, calls an output class to process the data being gathered. 
+This uses the features above to implement a robust data gathering loop. This, in turn, calls an output class to process the data being gathered.
 
 In the demo this is a `text` implementation of the class which logs to the console, and optionally to a log file with timestamps.
 

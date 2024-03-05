@@ -1,6 +1,5 @@
 # `printPY.py`
-A test and example for the `serialOM.py' class/library.
-* This was written as a prototype for the 'heart' of micropython based PrintPy2040.
+A test and example for the `serialOM.py' class/library on CPython based systems (eg RasPI)
 
 Output is handled in a seperate class, easy to adapt for alternate displays.
 * By default just an example text/console output class logging to the console and an optional logfile is provided.
@@ -70,13 +69,14 @@ Shows extended status information in response to a button press or other trigger
 * Not really used by the text outputter, aimed at standalone applications like PrintPy2040
 * Returns a string that will be logged to console by printPy
 
-There is only one public property:
+There are two public properties:
 
 `out.running` : a simple boolean property that is true if the display is active
+`out.statusActive` : a simple boolean property that is true if the display is showing a expanded status screen, typically on a timer.
 
 ## Notes:
 The output class keeps it's own copy of the OM so that it can rebuild it's display at will (eg for animation), this local copy is only updated when update() or showStatus() are called with the *model* parameter.
 
-The output class is expected to be fully independent of the main *printPy* loop. Responding only to what it sees in the ObjectModel updates it is passed and doing appropriate animations on startup and when *showStatus()* is called. 
+The output class is expected to be fully independent of the main *printPy* loop. Responding only to what it sees in the ObjectModel updates it is passed and doing appropriate animations on startup and when *showStatus()* is called.
 
 It should examine the machine status and uptime to decide when to show 'reboot', 'on', 'off', 'timeout' and other informational responses (splash screens). Screensavers and brightness levels should be derived this way too.

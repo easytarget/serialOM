@@ -27,6 +27,9 @@ class config():
         rawLog:     A raw log of all incoming serial data
         outputLog:  Log file passed to the output module
                     - The example TXT output class will mirror it's output there
+
+        WARNING: log files will fill rapidly (MB/Hr for the raw log)
+                 use with caution on microPython devices.
     '''
     rawLog = None
     outputLog = None
