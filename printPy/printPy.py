@@ -24,13 +24,10 @@ from os import execv
     PrintPy is a serialOM.py demo/example.
 
     This is intended to be run on a desktop system (CPython, not microPython)
-    that connects via serial or USBserial to a RRF 3.x based controller.
+    that connects via serial or USBSerial to a RRF 3.x based controller.
 
     For requirements and arguments please refer to the  README, the only real
     requirement is py-serial ('pip install --user pyserial' etc..)
-
-    As with serialOM itself there a comments hera about microPython use, iplease
-    ignore these since they are reminders for me to use when porting this later
 '''
 
 # local print function so we can suppress info messages.
@@ -56,7 +53,6 @@ def restartNow(why):
 
 # Used for critical hardware errors during initialisation on MCU's
 # mostly unused in Cpython, instead we soft-fail, restart and try again.
-# - in microPython we will be harsher with hardware errors
 def hardwareFail(why):
     pp('A critical hardware error has occured!')
     pp('- Do a full power off/on cycle and check wiring etc.\n' + why + '\n')
@@ -106,7 +102,7 @@ if config.outputLog:
         pp('output being logged to: ', config.outputLog)
         outputLog.write('\n' + startText + '\n')
 
-# Get output/display device, hard fail if not available
+# Get output logging/display device, hard fail if not available
 pp('starting output')
 out = outputRRF(log=outputLog)
 if not out.running:
@@ -116,8 +112,6 @@ if not out.running:
 rrf = None
 for device in config.devices:
     try:
-        # microPython: replace following with UART init
-        #              and we must set blocking timeout here too
         rrf = Serial(device,config.baud)
     except:
         pp('device "' + device + '" not available')
@@ -127,7 +121,6 @@ for device in config.devices:
         break
 if not rrf:
     # Loop looking for a serial device
-    # For micropython we should stop here since no UART == a serious fail.
     restartNow('No USB/serial device found')
 else:
     print('connected to: ' + rrf.name + ' @' + str(rrf.baudrate))
@@ -148,14 +141,16 @@ print(out.showStatus(OM.model),end='')
     Main loop
 '''
 while True:
-    collect()  # do this before every loop because.. microPython
+    # check output is running and restart if not
+    if not out.running:
+        restartNow('Output device has failed')
     begin = ticks_ms()
-    # Do a OM update
     haveData = False
+    # request a model update and soft fail on errors
     try:
         haveData = OM.update()
     except Exception as e:
-        restartNow('Error while fetching machine state\n' + str(e))
+        restartNow('Error while fetching ObjectModel data\n' + str(e))
     # output the results if successful
     if haveData:
         # pass the results to the output module and print any response
@@ -164,9 +159,6 @@ while True:
              print(outputText,end='')
     else:
         pp('Failed to fetch ObjectModel data')
-    # check output is running and restart if not
-    if not out.running:
-        restartNow('Output device has failed')
     # Request cycle ended, wait for next
     while ticks_diff(ticks_ms(),begin) < config.updateTime:
         sleep_ms(1)
