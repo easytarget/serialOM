@@ -20,16 +20,18 @@ class outputRRF:
         # If running I2C displays etc this should reflect their status
         self.running = True
 
-    def update(self,model=None):
+    def update(self,model=None, hostInfo=None):
         # Updates the local model, triggers an output update
         if model is not None:
             self._OM = model
         if self._OM is None:
             # called while not connected.
             return('no update data available\n')
+        elif hostInfo:
+            return hostInfo + ' || ' + self._showModel() + '\n'
         return self._showModel() + '\n'
 
-    def showStatus(self,model=None):
+    def showStatus(self, model=None, hostInfo=None):
         # Show specific status details for the controller and PrintPy
         # this could be expanded for microPython memory etc.
         if model is not None:
@@ -46,6 +48,8 @@ class outputRRF:
         r += self._OM['state']['machineMode'] + '" mode\n      '
         r += 'Vin: %.1f' % self._OM['boards'][0]['vIn']['current'] + 'V'
         r += ' | mcu: %.1f' % self._OM['boards'][0]['mcuTemp']['current'] + 'C'
+        if hostInfo:
+            r += '\n' + hostInfo
         # Return results
         if self._log:
             self._log.write('[' + str(int(time())) + '] ' + r + '\n')
@@ -128,7 +132,7 @@ class outputRRF:
     def _updateAxes(self):
         # Display all configured axes workplace and machine position, plus state.
         ws = self._OM['move']['workplaceNumber']
-        r = ' | axes: W' + str(ws + 1)
+        r = ' | axes: '
         m = ''      # machine pos
         offset = False   # workspace offset from Machine Pos?
         if self._OM['move']['axes']:
@@ -142,8 +146,9 @@ class outputRRF:
                     else:
                        r += ' ' + axis['letter'] + ':?'
                        m += ' ?'
+            r += ' (' + str(ws + 1) + ')'
             if offset:
-                r += ' (' + m[1:] + ')'
+                r += '(' + m[1:] + ')'
         return r
 
     def _updateMessages(self):

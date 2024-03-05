@@ -8,7 +8,6 @@ except:
 from compatLib import zip_longest
 from compatLib import reduce
 from gc import collect
-from micropython import mem_info
 
 '''
     General note:
@@ -88,18 +87,19 @@ class serialOM:
         self._requestTimeout = 250
         self._uart = False
         self._defaultModel = {'state':{'status':'unknown'},'seqs':None}
-        self._jsonChars = bytearray(range(0x20,0x7F)).decode('ascii')
         self._seqs = {}
         self._seqKeys = ['state']  # we always check 'state'
+        for mode in self._omKeys.keys():  # all possible keys
+            self._seqKeys = list(set(self._seqKeys) | set(self._omKeys[mode]))
         self._upTime = -1
+
+        # public parameters
         self.model = self._defaultModel
         self.machineMode = ''
 
         # Main Init
         self._print('serialOM is starting')
         # a list of all possible keys we may need
-        for mode in self._omKeys.keys():
-            self._seqKeys = list(set(self._seqKeys) | set(self._omKeys[mode]))
         # set a non blocking timeout on the serial device
         # default is 1/10 of the request time
         if 'Serial' in str(type(rrf)):
@@ -116,33 +116,37 @@ class serialOM:
             self._print('Unable to determine serial stream type to enforce read timeouts!')
             self._print('please ensure these are set for your device to prevent serialOM blocking')
         # check for a valid response to a firmware version query
-        self._print('checking for connected RRF controller')
+        self._start()
+
+    def _start(self):
+        # Start the serialOM comms
         retries = 10
         while not self._firmwareRequest():
             retries -= 1
             if retries == 0:
                 self._print('failed to get a sensible M115 response from controller')
-                return
+                return False
             self._print('failed..retrying')
             sleep_ms(self._requestTimeout)
         self._print('controller is connected')
         sleep_ms(100)
+
         # Do initial update to fill local model`
         self._print('making initial data set request')
         if self.update():
             self._print('connected to ObjectModel')
+            return True
         else:
             self.model = self._defaultModel
             self.machineMode = ''
             self._print('failed to obtain initial machine state')
-
+            return False
 
     # To print, or not print, that is the question.
     def _print(self, *args, **kwargs):
         if not self._quiet:
             print(*args, **kwargs)
 
-    # Handle a request cycle to the OM
     def _omRequest(self, OMkey, OMflags):
         '''
             This is the main request send/recieve function, it sends a OM key request to the
@@ -151,35 +155,10 @@ class serialOM:
         # Construct the M409 command
         cmd = 'M409 F"' + OMflags + '" K"' + OMkey + '"'
         queryResponse = self.getResponse(cmd)
-        jsonResponse = self._onlyJson(queryResponse)
-        if len(jsonResponse) == 0:
+        if len(queryResponse) == 0:
             return False
         else:
-            return self._updateOM(jsonResponse,OMkey)
-
-    def _onlyJson(self,queryResponse):
-        # return JSON candidates from the query response
-        if len(queryResponse) == 0:
-            return []
-        '''
-        jsonResponse = []
-        nest = 0
-        for line in queryResponse:
-            json = ''
-            for char in line or '':
-                if char == '{':
-                    nest += 1
-                if nest > 0 :
-                    json += char
-                if char == '}':
-                    nest -= 1
-                    if nest <0:
-                        break
-                    elif nest == 0:
-                        jsonResponse.append(json)
-                        json = ''
-        return jsonResponse '''
-        return queryResponse
+            return self._updateOM(queryResponse,OMkey)
 
     def _updateOM(self,response,OMkey):
         # Merge or replace the local OM copy with results from the query
@@ -255,15 +234,12 @@ class serialOM:
             return self._seqKeys
 
         if not self._keyRequest('state',verboseSeqs):
-            self._print('"state" key request failed')
-        else:
-            pass
-            #print('S',end='')                                   # debug
+            self._print('state key request failed')
+        if self._upTime > self.model['state']['upTime']:
+            verboseSeqs = cleanstart('controller restarted')
         if self.machineMode != self.model['state']['machineMode']:
             verboseSeqs = cleanstart('machine mode is: ' +
                                       self.model['state']['machineMode'])
-        elif self._upTime > self.model['state']['upTime']:
-            verboseSeqs = cleanstart('controller restarted')
         self.machineMode = self.model['state']['machineMode']
         self._upTime = self.model['state']['upTime']
         return verboseSeqs
@@ -295,7 +271,16 @@ class serialOM:
         haveRRF = False
         if len(response) > 0:
             for line in response:
-                self._print('>> ' + line)
+                try:
+                    json = loads(line)
+                except:
+                    fwLine = line.strip('\n')
+                else:
+                    if 'resp' in json.keys():
+                        fwLine = json['resp']
+                    else:
+                        fwLine = str(json)
+                self._print('>> ' + fwLine.strip('\n'))
                 # A basic test to see if we have an RRF firmware
                 # - Ideally expand to add more checks, eg version.
                 if 'RepRapFirmware' in line:
@@ -315,12 +300,15 @@ class serialOM:
             raise serialOMError('Failed to query length of input buffer : ' + repr(e)) from None
         if waiting > 0:
             try:
-                junk = self._rrf.read().decode('ascii')
+                junk = self._rrf.read()
             except Exception as e:
                 raise serialOMError('Failed to flush input buffer : ' + repr(e)) from None
-            else:
-                if self._rawLog:
-                    self._rawLog.write(junk)
+            if self._rawLog:
+                try:
+                    self._rawLog.write(junk).decode('ascii')
+                except:
+                    pass  # just silently ignore decode failures here
+
         # send command
         try:
             self._rrf.write(bytearray(code + "\r\n",'utf-8'))
@@ -339,35 +327,26 @@ class serialOM:
         self.sendGcode(cmd)
         # And wait for a response
         requestTime = ticks_ms()
-        queryResponse = []
         response=[]
         # only look for responses within the requestTimeout period
         while (ticks_diff(ticks_ms(),requestTime) < self._requestTimeout):
             try:
-                readLine = self._rrf.readline()
+                rawLine = self._rrf.readline()
             except Exception as e:
                 raise serialOMError('Serial read from controller failed : ' + repr(e)) from None
-            if not readLine:
+            if not rawLine:
                 continue
-            if (readLine[-2:] == b'}\n'):
-                #print('!',end='')               # debug
-                queryResponse.append(readLine)
+            try:
+                readLine = rawLine.decode('ascii')
+            except:
+                self_print('ascii decode failure')
+                continue
+            if self._rawLog:
+                self._rawLog.write(readLine)
+            if (readLine[:1] == '{') and (readLine[-2:] == '}\n'):
+                response.append(readLine)
                 break
-            else:
-                pass
-                #print('?',end='')             # debug
-            queryResponse.append(readLine)
-        #print(queryResponse)                 # debug
-        for line in queryResponse:
-            responseLine = ''
-            for char in line:
-                if self._rawLog and char:
-                    self._rawLog.write(chr(char))
-                # store valid characters
-                if chr(char) in self._jsonChars:
-                    responseLine += chr(char)
-            response.append(responseLine)
-            #print('+',end='')             # debug
+        # now have either a 'json-like' string or a timeout, cleanup and return
         collect()
         return response
 

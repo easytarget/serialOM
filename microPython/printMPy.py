@@ -5,11 +5,10 @@ from outputTXT import outputRRF
 from config import config
 
 # Common classes between CPython and microPython
-from gc import collect
+from gc import collect,mem_free
 from machine import UART
 from time import sleep_ms,ticks_ms,ticks_diff,localtime
 from machine import reset
-from micropython import mem_info
 
 
 '''
@@ -120,15 +119,14 @@ while True:
     # output the results if successful
     if haveData:
         # pass the results to the output module and print any response
-        outputText = out.update(OM.model)
+        outputText = out.update(OM.model,str(mem_free()))
         if outputText:
              print(outputText,end='')
     else:
-        pp('Failed to fetch ObjectModel data')
+        pp('failed to fetch ObjectModel data')
     # check output is running and restart if not
     if not out.running:
         restartNow('Output device has failed')
-    #mem_info()
     # Request cycle ended, wait for next
     while ticks_diff(ticks_ms(),begin) < config.updateTime:
         sleep_ms(1)
