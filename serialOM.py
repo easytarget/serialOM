@@ -14,7 +14,10 @@ from compatLib import reduce
     microPython using the machine.UART interface.
 
     This should be opaque to the user, we select the correct serial vs uart
-    functions where this differs (timing options and flushing rx buffer)
+    functions where this differs (timing options and flushing rx buffer).
+
+    For microPython it assumes a well-specified controller, it has been
+    tested on a RP2040 (120MHz cpu, 264K ram) running microPython 1.22.1
 '''
 
 class serialOMError(Exception):
@@ -114,7 +117,7 @@ class serialOM:
 
         # Main Init
         self._print('serialOM is starting')
-        # a list of all possible keys we may need
+
         # set a non blocking timeout on the serial device
         # default is 1/10 of the request time
         if 'Serial' in str(type(rrf)):
@@ -133,6 +136,11 @@ class serialOM:
         # start the handler
         self._start()
 
+    def _print(self, *args, **kwargs):
+        # To print, or not print, that is the question.
+        if not self._quiet:
+            print(*args, **kwargs)
+
     def _start(self):
         # Start the serialOM comms
         retries = 10
@@ -141,11 +149,10 @@ class serialOM:
             if retries == 0:
                 self._print('failed to get a sensible M115 response from controller')
                 return False
-            self._print('failed..retrying')
+            self._print('failed..retrying (' + retries + ' left)')
             sleep_ms(self._requestTimeout)
         self._print('controller is connected')
         sleep_ms(100)
-
         # Do initial update to fill local model`
         self._print('making initial data set request')
         if self.update():
@@ -156,11 +163,6 @@ class serialOM:
             self.machineMode = ''
             self._print('failed to obtain initial machine state')
             return False
-
-    # To print, or not print, that is the question.
-    def _print(self, *args, **kwargs):
-        if not self._quiet:
-            print(*args, **kwargs)
 
     def _omRequest(self, OMkey, OMflags):
         '''
