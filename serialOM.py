@@ -181,8 +181,7 @@ class serialOM:
             try:
                 payload = loads(line)
             except:
-                # invalid JSON, print and skip to next line
-                self._print('invalid JSON:',line)
+                # invalid JSON, skip line
                 continue
             # Update local OM data
             if 'key' not in payload.keys():
@@ -346,6 +345,7 @@ class serialOM:
             if (readLine[:1] == '{') and (readLine[-2:] == '}\n'):
                 response.append(readLine)
                 break
+            response.append(readLine)
         # now have either a 'json-like' string or a timeout, cleanup and return
         collect()
         return response
