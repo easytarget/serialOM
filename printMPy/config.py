@@ -1,24 +1,22 @@
 '''
-    configuration file for printPy.py
+    Set the serial device path and baud rate here, etc.
 '''
 
 class config():
     '''
         Serial Device Config:
-        devices:  (list[strings]) devices to try when connecting
-                  - a list is used because under linux the /dev/ttyACM* and /dev/ttyUSB*
-                    devices can wander between 0 and 1 when the controller reboots.
+        device:   (int) UART device (0 or 1)
         baud:     (int) Serial baud rate; should match the setting used in config.g
         quiet:    (bool) suppress info messages
     '''
-    devices = ['/dev/ttyACM0','/dev/ttyACM1']
+    device = 0
     baud = 57600
     quiet = False
 
     '''
         Timing and timeout config:
         updateTime:     (int, ms)  Basic time interval between update cycles
-        rebootDelay:    (int) Countdown in seconds when auto-restarting/rebooting
+        rebootDelay:    (int) Countdown in seconds when auto-restarting/rebooting printPy
     '''
     updateTime = 1000
     rebootDelay = 3
@@ -29,6 +27,14 @@ class config():
         rawLog:     A raw log of all incoming serial data
         outputLog:  Log file passed to the output module
                     - The example TXT output class will mirror it's output there
+
+        WARNING: log files will fill rapidly (MB/Hr for the raw log)
+                 use with caution on microPython devices.
     '''
     rawLog = None
     outputLog = None
+
+    '''
+        Hardware button pin number (or None)
+    '''
+    button = 2

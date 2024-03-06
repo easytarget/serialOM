@@ -1,33 +1,17 @@
-from sys import path
-path.insert(0,'..')
 # Import our local classes and config
 from serialOM import serialOM
 from outputTXT import outputRRF
+from lumenNOLED import lumen
 from config import config
-
-# Common classes between CPython and microPython
-from gc import collect
-from sys import argv
-'''
-    microPython:
-    from machine import UART
-    from time import sleep_ms,ticks_ms,ticks_diff,localtime
-    from machine import reset
-'''
-from serial import Serial
-from compatLib import sleep_ms,ticks_ms,ticks_diff
-from time import localtime
-from sys import executable
-from os import execv
+# The microPython standard libs
+from sys import exit
+from gc import collect,mem_free
+from machine import UART,Pin
+from time import sleep_ms,ticks_ms,ticks_diff,localtime
+from machine import reset
 
 '''
-    PrintPy is a serialOM.py demo/example.
-
-    This is intended to be run on a desktop system (CPython, not microPython)
-    that connects via serial or USBSerial to a RRF 3.x based controller.
-
-    For requirements and arguments please refer to the  README, the only real
-    requirement is py-serial ('pip install --user pyserial' etc..)
+    PrintMPy is a serialOM.py loop for MicroPython devices.
 '''
 
 # local print function so we can suppress info messages.
@@ -44,20 +28,28 @@ def restartNow(why):
         rawLog.flush()
     # Countdown and restart
     pp('Restarting in ',end='')
+
     for c in range(config.rebootDelay,0,-1):
-        pp(c,end=' ',flush=True)
+        pp(c,end=' ')
+        led.blink('err')
         sleep_ms(1000)
     pp()
-    execv(executable, ['python'] + argv)   #  CPython
-    #reset() # Micropython; reboot module
+    #execv(executable, ['python'] + argv)   #  CPython
+    exit()
+    reset() # Micropython; reboot module
 
-# Used for critical hardware errors during initialisation on MCU's
-# mostly unused in Cpython, instead we soft-fail, restart and try again.
 def hardwareFail(why):
     pp('A critical hardware error has occured!')
     pp('- Do a full power off/on cycle and check wiring etc.\n' + why + '\n')
     while True:  # loop forever
         sleep_ms(60000)
+
+def buttonpress(p):  # Needs debounce!
+    outputText = out.showStatus(OM.model,'printPy Free Memory: ' + str(mem_free()))
+    if outputText:
+             print(outputText,end='')
+    sleep_ms(100)  # 100ms of debounce before we return control.
+
 
 '''
     Init
@@ -72,15 +64,7 @@ startText = '=== Starting: ' + startDate + ' ' + startTime
 if config.quiet:
     print(startText)
 else:
-    print(argv[0] + ' is starting at: ' + startDate + ' ' + startTime + ' (device localtime)')
-
-# Arguments, optional, #1 is update timer, #2 serial device, #3 baud.
-if len(argv) > 1:
-    config.updateTime = int(argv[1])
-if len(argv) > 2:
-    config.devices = [str(argv[2])]
-if len(argv) > 3:
-    config.baud = int(argv[3])
+    print('printMPy is starting at: ' + startDate + ' ' + startTime + ' (device localtime)')
 
 # Debug Logging
 rawLog = None
@@ -102,34 +86,38 @@ if config.outputLog:
         pp('output being logged to: ', config.outputLog)
         outputLog.write('\n' + startText + '\n')
 
-# Get output logging/display device, hard fail if not available
+# Get output/display device, hard fail if not available
 pp('starting output')
 out = outputRRF(log=outputLog)
 if not out.running:
     hardwareFail('Failed to start output device')
 
+# hardware button
+if config.button:
+    button = Pin(config.button, Pin.IN, Pin.PULL_UP)
+    button.irq(trigger=button.IRQ_FALLING, handler=buttonpress)
+
+
 # Init RRF USB/serial connection
-rrf = None
-for device in config.devices:
-    try:
-        rrf = Serial(device,config.baud)
-    except:
-        pp('device "' + device + '" not available')
-    else:
-        pp('device "' + device + '" available')
-        sleep_ms(100)   # settle time
-        break
+rrf = UART(config.device)
+rrf.init(baudrate=config.baud)
 if not rrf:
-    # Loop looking for a serial device
-    restartNow('No USB/serial device found')
+    hardwareFail('No UART device found')
 else:
-    print('connected to: ' + rrf.name + ' @' + str(rrf.baudrate))
+    print('UART connected')
+
+# Illumination/mood LEDs
+led = lumen()
+led.blink('busy')
+led.send()
 
 # create the OM handler
 try:
     OM = serialOM(rrf, out.omKeys, rawLog, config.quiet)
 except Exception as e:
     restartNow('Failed to start ObjectModel communications\n' + str(e))
+
+led.blink(led.emote(OM.model))
 
 if OM.machineMode == '':
     restartNow('Failed to connect to controller, or unsupported controller mode.')
@@ -141,24 +129,28 @@ print(out.showStatus(OM.model),end='')
     Main loop
 '''
 while True:
-    # check output is running and restart if not
-    if not out.running:
-        restartNow('Output device has failed')
+    collect()  # do this before every loop because.. microPython
     begin = ticks_ms()
+    # Do a OM update
+    led.send()
     haveData = False
-    # request a model update and soft fail on errors
     try:
         haveData = OM.update()
     except Exception as e:
-        restartNow('Error while fetching ObjectModel data\n' + str(e))
+        restartNow('Error while fetching machine state\n' + str(e))
     # output the results if successful
     if haveData:
         # pass the results to the output module and print any response
         outputText = out.update(OM.model)
         if outputText:
              print(outputText,end='')
+        led.blink(led.emote(OM.model))
     else:
-        pp('Failed to fetch ObjectModel data')
+        led.blink('err')
+        pp('failed to fetch ObjectModel data')
+    # check output is running and restart if not
+    if not out.running:
+        restartNow('Output device has failed')
     # Request cycle ended, wait for next
     while ticks_diff(ticks_ms(),begin) < config.updateTime:
         sleep_ms(1)
