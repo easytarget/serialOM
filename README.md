@@ -1,24 +1,25 @@
 # serialOM.py
-A RepRapFirmware [ObjectModel](https://github.com/Duet3D/RepRapFirmware/wiki/Object-Model-Documentation) serial access tool for Python3 and microPython 1.22
+A RepRapFirmware [ObjectModel](https://github.com/Duet3D/RepRapFirmware/wiki/Object-Model-Documentation) serial access tool for Python3.7+ and microPython 1.22+
 
 **serialOM** implements a fetch and update cycle using [`M409`](https://docs.duet3d.com/User_manual/Reference/Gcodes#m409-query-object-model) commands to query the ObjectModel on the controller, the responses are gathered and merged into a local Dictionary structure. That can be accessed to drive displays, loggers and more.
 
 ## Requirements:
-### CPython
+### CPython 3.7 (or higher)
 * `PySerial` (https://pyserial.readthedocs.io/)
   * *serialOM* expects to be passed a PySerial object (but other serial/stream devices may work too).
-### microPython
+### microPython 1.212 (or higher)
 * A well specified microPython based MCU with the latest official MPY firmware on it.
+* * In my simple testing *serialOM* is using at least 100K of ram to run the text-only printPy demo. CPU speed is not an issue, at least on a single RP2040 thread @ 120Mhz.
 #### common
 * A suitable RRF USB/serial/UART device specified with '[M575](https://docs.duet3d.com/User_manual/Reference/Gcodes#m575-set-serial-comms-parameters)' in `config.g` to connect to.
   * For USB set `M575 P0 S2` in your config, this will set the USB port correctly.
-  * Other UART ports should use `S0` as the port mode (`S2` also works).
+  * Other controller UART ports should use `S0` as the port mode (`S2` also works).
   * CRC/Checksum modes are *not* supported, this includes the default `S1` mode.
 * `compatLib.py`: Already provided; a local set of stubs for cross-python compatibility.
   * Keep this in the same folder as `serialOM.py`.
 
 ## Overview:
-**serialOM()** takes a `Serial()` object at init, and a dictionary with the OM keys to gather for each machine mode.
+**serialOM()** takes a 'serial' object at init, and a dictionary with the OM keys to gather for each machine mode.
 
 It returns a *serialOM* object, with the `model` property populated with the requested keys (and the 'state' key)
 
@@ -41,7 +42,7 @@ The provided 'miniDemo.py' script is more detailed and shows the use of the `OM.
 ### Blocking:
 When being initialised, updated or making requests *serialOM* is blocking, it implements it's own request timeouts and will return if the connected device times out. This 'per request' timeout can be passed  at init(). During update()s serialOM will make 2 requests minimum, plus one request per additional OM key.
 
-The `Serial()` device neeeds to have it's blocking timeouts set lower than the overall Request timeout. This is done during init by *serialOM* itself and does not need to be specified when creating PySerial ot UART objects.
+The `Serial()` device neeeds to have it's blocking timeouts set lower than the Request timeout. This is done during init by *serialOM* itself and does not need to be specified when creating PySerial or UART objects.
 * If adapting for other serial classes than PySerial/UART you need to set the blocking correctly at init.
 
 ### Exceptions:
@@ -93,43 +94,45 @@ Sends the specified `code` to the controller, has no return value.
 ```python
 serialOM.getResponse('code',json)
 ```
-Sends `code` and waits for a response, if `json` is true it returns as soon as it sees a line beginning with `{` and ending with `}` with that as a single list item. Otherwise it waits for the requestTimeout and returns a list of all recieved lines.
-Conforms to the request timeout as described above and returns an empty list if no valid response recieved.
+Sends `code` and waits for a response, if `json` is true and it sees a line beginning with `{` and ending with `}` it will return immediately with that as a single list item. Otherwise it waits for the requestTimeout and returns a list of all recieved lines.
+Conforms to the request timeout as described above and returns an empty list if no valid response recieved in time.
 
 ## Operation:
-*serialOM* Implements a RRF ObjectModel fetch and update cycle based on using `[M409](https://docs.duet3d.com/User_manual/Reference/Gcodes#m409-query-object-model)` commands to query the ObjectModel on the controller, the responses are gathered and merged into a local Dictionary structure.
-  * *serialOM* Uses the `seqs` sequence number mechanism to limit load on the controller by only making verbose requests as needed.
-  * *serialOM* fetches different sets of top level ObjectModel keys depending on the master machine mode `FFF`,`CNC` or `Laser`.
-    * This allows you to limit requests to only the keys you need for the mode.
-    * The `printPY.py` demo demonstrates how to use this.
-  * *serialOM* provides a `serialOM.model` structure (dict) with all currently known data.
-   * Each key in *serialOM.model* represents the corresponding OM top level key. The contents of the key will be a structure (lists and dicts) matching the ObjectModel.
-  * All low-level serial errors are trapped, and *serialOM* provides it's own `serialOMError` exception that can be independently trapped to make connections robust.
-    * The `printPY.py` demo demonstrates this.
-  * After initial connection has been made `serialOM.update()` can be called to update and refresh the local ObjectModel.
-    * Calling update() will clean and re-populate the ObjectModel if either a machine mode change, or a restart of the controller is detected.
-* Requires `pyserial`, or a compatible 'serial()' object
-  * Install your distros pyserial package: eg: `sudo apt install python-serial`, or `pip install --user pyserial`, or use a virtualenv (advanced users).
-  * On linux make sure your user is in the 'dialout' group to access the devices.
-  * There is no reason why this would not run on Windows, but I have not tried this. You will need ai viable Python 3.7+ install with pyserial, and change the device path to the windows equivalent.
+*serialOM* Implements a RRF ObjectModel fetch and update cycle based on using [`M409`](https://docs.duet3d.com/User_manual/Reference/Gcodes#m409-query-object-model) commands to query the ObjectModel on the controller, the responses are gathered and merged into a local Dictionary structure.
+* *serialOM* Uses the `seqs` sequence number mechanism to limit load on the controller by only making verbose requests as needed.
+* *serialOM* fetches different sets of top level ObjectModel keys depending on the master machine mode `FFF`,`CNC` or `Laser`.
+* * This allows you to limit requests to only the keys you need for the mode.
+* * The `printPY.py` demo demonstrates how to use this.
+* *serialOM* provides `serialOM.model`, a dictionary structure with all currently known data.
+* * Each key in *serialOM.model* represents the corresponding OM top level key. The contents of the key will be a structure (lists and dicts) matching the ObjectModel.
+* All low-level serial errors are trapped, and *serialOM* provides it's own `serialOMError` exception that can be independently trapped to make connections robust.
+* * The `printPY.py` demo demonstrates this.
+* After initialisation calling update() will refresh the local OM as necesscary.
+* * The update will clean and re-populate the ObjectModel if either a machine mode change, or a restart of the controller is detected.
+* For CPython *serialOM* requires `pyserial`, or a compatible 'serial()' object. 
+* * Install your distros pyserial package: eg: `sudo apt install python-serial`, or `pip install --user pyserial`, or use a virtualenv (advanced users).
+* * On linux make sure your user is in the 'dialout' group to access the devices.
+* There is no reason why this would not run on Windows, but I have not tried that. You will need a viable Python 3.7+ install with pyserial, and change the device path to the windows 'COM' equivalent.
 
 ## Notes:
-  * Written in CPython; but I am trying to keep all the logic and data handling simple and low-memory for porting to microPython.
-    * Non micropython standard libs are discouraged unless they have a easy micropython equivalent/local lib.
-    * All times are in `ms` (micropython uses `int(ms)` for it's timing basics rather than `float(seconds)`).
-  * Tested and developed on a RaspberryPI connected to my Duet2 wifi via USB/serial,and python 3.9.
-  * You can specify a 'raw' log file handle at init; this is handy when debugging but will fill very rapidly and should never be used 'in production'!
-  * Published under the CC0 (Creative Commons Zero) Licence; use however you want! Dont blame me if it all goes wrong..
+Written in CPython; but I am trying to keep all the logic and data handling simple and low-memory for porting to microPython.
+* Non micropython standard libs are discouraged unless they have a easy micropython equivalent/local lib.
+* All times are in `ms` (micropython uses `int(ms)` for it's timing basics rather than `float(seconds)`).
+* You can specify a 'raw' log file handle at init; this is handy when debugging but will fill very rapidly and should never be used 'in production'!
+* Tested and developed on a RaspberryPI connected to my Duet2 wifi via USB/serial, running python 3.9.
+Published under the CC0 (Creative Commons Zero) Licence; use however you want! Dont blame me if it all goes wrong..
 
 # printPy.py for CPython:
-*For microPython see the equivalent 'printMPy.py' in the (printMPy)[printMPy] folder and it's (README)[printMPy/README.md]*
+*For microPython see the equivalent 'printMPy.py' in the [printMPy](printMPy) folder and it's [README](printMPy/README.md)*
 
-*serialOM* comes with a full implementation of a datalogging script in the `printPy` folder.
-This uses the features above to implement a robust data gathering loop. This, in turn, calls an output class to process the data being gathered.
+*serialOM* comes with a full implementation of a datalogging script in the [`printPy`](printPy) folder.
 
-In the demo this is a `text` implementation of the class which logs to the console, and optionally to a log file with timestamps.
+This uses the features above to implement a robust data gathering loop. This loop calls an independent *output class* to process and display the data being gathered. 
 
-See [printPy/README.md](printPy/README.md)
+## outputXXX.py class
+In the *printPy* demo this is a `text` implementation of the class which logs to the console, and optionally to a log file with timestamps.
+
+See the full description at [printPy/README.md](printPy/README.md)
 * The text output class serves as a template for writing classes to display ObjectModel info on I2C/SPI or any other external display/data feed.
 * This will eventually be ported to microPython as the core of [PrintPy2040](https://github.com/easytarget/PrintPy2040/).
 
