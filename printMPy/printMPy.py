@@ -1,11 +1,12 @@
 # Import our local classes and config
 from serialOM import serialOM
 from outputTXT import outputRRF
+from lumenNOLED import lumen
 from config import config
 # The microPython standard libs
 from sys import exit
 from gc import collect,mem_free
-from machine import UART
+from machine import UART,Pin
 from time import sleep_ms,ticks_ms,ticks_diff,localtime
 from machine import reset
 
@@ -27,8 +28,10 @@ def restartNow(why):
         rawLog.flush()
     # Countdown and restart
     pp('Restarting in ',end='')
+
     for c in range(config.rebootDelay,0,-1):
         pp(c,end=' ')
+        led.blink('err')
         sleep_ms(1000)
     pp()
     #execv(executable, ['python'] + argv)   #  CPython
@@ -40,6 +43,13 @@ def hardwareFail(why):
     pp('- Do a full power off/on cycle and check wiring etc.\n' + why + '\n')
     while True:  # loop forever
         sleep_ms(60000)
+
+def buttonpress(p):  # Needs debounce!
+    outputText = out.showStatus(OM.model,'printPy Free Memory: ' + str(mem_free()))
+    if outputText:
+             print(outputText,end='')
+    sleep_ms(100)  # 100ms of debounce before we return control.
+
 
 '''
     Init
@@ -82,6 +92,12 @@ out = outputRRF(log=outputLog)
 if not out.running:
     hardwareFail('Failed to start output device')
 
+# hardware button
+if config.button:
+    button = Pin(config.button, Pin.IN, Pin.PULL_UP)
+    button.irq(trigger=button.IRQ_FALLING, handler=buttonpress)
+
+
 # Init RRF USB/serial connection
 rrf = UART(config.device)
 rrf.init(baudrate=config.baud)
@@ -90,11 +106,18 @@ if not rrf:
 else:
     print('UART connected')
 
+# Illumination/mood LEDs
+led = lumen()
+led.blink('busy')
+led.send()
+
 # create the OM handler
 try:
     OM = serialOM(rrf, out.omKeys, rawLog, config.quiet)
 except Exception as e:
     restartNow('Failed to start ObjectModel communications\n' + str(e))
+
+led.blink(led.emote(OM.model))
 
 if OM.machineMode == '':
     restartNow('Failed to connect to controller, or unsupported controller mode.')
@@ -109,6 +132,7 @@ while True:
     collect()  # do this before every loop because.. microPython
     begin = ticks_ms()
     # Do a OM update
+    led.send()
     haveData = False
     try:
         haveData = OM.update()
@@ -117,10 +141,12 @@ while True:
     # output the results if successful
     if haveData:
         # pass the results to the output module and print any response
-        outputText = out.update(OM.model,str(mem_free()))
+        outputText = out.update(OM.model)
         if outputText:
              print(outputText,end='')
+        led.blink(led.emote(OM.model))
     else:
+        led.blink('err')
         pp('failed to fetch ObjectModel data')
     # check output is running and restart if not
     if not out.running:

@@ -33,3 +33,8 @@ class config():
     '''
     rawLog = None
     outputLog = None
+
+    '''
+        Hardware button pin number (or None)
+    '''
+    button = 2

@@ -112,6 +112,7 @@ while True:
                 pass
             try:
                 rrfstate['status'] = state['result']['state']['status']
+                rrfstate['upTime'] = state['result']['state']['upTime']
                 print("MASTER Status: " + rrfstate['status'])
             except KeyError:
                 pass
@@ -146,7 +147,7 @@ while True:
         display0.rect(1, 1, 125, 14, 0, True)
         display0.text("State: " + rrfstate["status"], 10, 5, 1)
         display1.rect(1, 1, 125, 14, 0, True)
-        display2.text("RRF Up: " + str(rrfstate["upTime"]), 10, 5, 1)
+        display1.text("RRF Up: " + str(rrfstate["upTime"]), 10, 5, 1)
     display0.show()
     display1.show()
 
