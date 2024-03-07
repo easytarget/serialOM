@@ -17,7 +17,7 @@ class lumen:
         '''
         self.bright = bright
         self.flash = flash
-        self._moods = {'off':(255,255,0),
+        self._moods = {'off':(255,128,0),
                         'on':(0,255,0),
                       'busy':(255,255,255),
                        'job':(255,0,255),
