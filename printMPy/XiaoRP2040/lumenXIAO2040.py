@@ -44,7 +44,6 @@ class lumen:
         self._rgbG.value(not state[1])
         self._rgbB.value(not state[2])
 
-
     def blink(self,mood):
         '''
             flash the mood after an update finishes
@@ -69,8 +68,8 @@ class lumen:
 
     def send(self):
         '''
-            Use for a seperate 'send heartbeat' led, if available
-            cycling on/off every time a request cycle begins
+            Use for a seperate 'send heartbeat' led using the spare 'USER' led of the Xiao
+            cycling RGB every time a request cycle begins
         '''
         self._setRGB(self._rgbstate)         # Rotate the onboard RGB
         self._rgbstate = (self._rgbstate[2],self._rgbstate[0],self._rgbstate[1])
@@ -84,7 +83,6 @@ class lumen:
 
         status = model['state']['status']
         wifi = False
-
         if len(model['network']['interfaces']) > 0:
             for interface in model['network']['interfaces']:
                 if interface['type'] is 'wifi' and interface['state'] is 'active':
