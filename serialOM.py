@@ -149,7 +149,7 @@ class serialOM:
             if retries == 0:
                 self._print('failed to get a sensible M115 response from controller')
                 return False
-            self._print('failed..retrying (' + retries + ' left)')
+            self._print('failed..retrying (' + str(retries) + ' left)')
             sleep_ms(self._requestTimeout)
         self._print('controller is connected')
         sleep_ms(100)
