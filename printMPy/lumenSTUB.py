@@ -6,6 +6,15 @@ from machine import Timer
 '''
 
 class lumen:
+    moods = {
+             'off':(1,1,0), # orange
+              'on':(0,1,0), # green
+            'busy':(1,1,1), # white
+             'job':(1,0,1), # violet
+          'paused':(0,0,1), # blue
+             'err':(1,0,0), # red
+             }
+
     def __init__(self,bright=1,flash=120):
         '''
             start led/neopixel etc
@@ -14,12 +23,6 @@ class lumen:
                 self.bright = float(0..1), intensity
                 self.flash  = int(), flash duration in ms
         '''
-        self._moods = {'off':(255,255,0),
-                        'on':(0,255,0),
-                      'busy':(255,255,255),
-                       'job':(255,0,255),
-                    'paused':(0,0,255),
-                       'err':(255,0,0)}
         self.bright = bright
         self.flash = flash
         self._heartbeat = 0
@@ -28,20 +31,20 @@ class lumen:
     def blink(self,mood):
         '''
             flash the mood after an update finishes
-            use an interrupt timer
-            to turn off after self.flash time
+            use an interrupt timer to turn off after flash time
             timer features vary by MCU, example here is for RP2040, ymmv
         '''
         def unblink(t):
+            # interrupt/schedule target
             #print('TODO: led-off')
-            pass  # Put code here to turn the LED off
+            pass # Put code here to turn the LED off
 
         if mood == 'empty':
             return
+        # uncomment timer line below
+        #Timer(period=self.flash, mode=Timer.ONE_SHOT, callback=unblink)
         #print('TODO: led-on: "' + mood + '"')
         pass  # Put code here to turn the LED on, if it is RGB use the colors in the mood map.
-        # start a timer to turn the LED off again
-        Timer(period=self.flash, mode=Timer.ONE_SHOT, callback=unblink)
 
     def send(self):
         '''
@@ -62,26 +65,29 @@ class lumen:
             status to colors, crudely.
         '''
 
-        status = model['state']['status']
-        wifi = False
-        if len(model['network']['interfaces']) > 0:
-            for interface in model['network']['interfaces']:
-                if interface['type'] is 'wifi' and interface['state'] is 'active':
-                    wifi = True
-
         if model is None:
             return('err')
+        if 'state' in model.keys():
+            status = model['state']['status']
+        else:
+            return 'err'
+        network = False
+        if 'network' in model.keys():
+            if len(model['network']['interfaces']) > 0:
+                for interface in model['network']['interfaces']:
+                    if interface['state'] is 'active':
+                        network = True
         if model['state']['machineMode'] == '':
            return('err')
         if status in ['disconnected','halted']:
             return('err')
         if status is 'off':
-            if wifi:
+            if network:
                 return('off')
             else:
                 return('err')
         if status is 'idle':
-            if wifi:
+            if network:
                 return('on')
             else:
                 return('err')
