@@ -15,7 +15,7 @@ A RepRapFirmware [ObjectModel](https://github.com/Duet3D/RepRapFirmware/wiki/Obj
   * For USB set `M575 P0 S2` in your config, this will set the USB port correctly.
   * Other controller UART ports should use `S0` as the port mode (`S2` also works).
   * CRC/Checksum modes are *not* supported, this includes the default `S1` mode.
-* `compatLib.py`: Already provided; a local set of stubs for cross-python compatibility.
+* `compatLib.py`: A local set of stubs for cross-python compatibility.
   * Keep this in the same folder as `serialOM.py`.
 
 ## Overview:
@@ -47,6 +47,11 @@ The `Serial()` device neeeds to have it's blocking timeouts set lower than the R
 
 ### Exceptions:
 *serialOM* catches all exceptions coming from `serial` devices during read and write operations and will raise it's own `serialOMError` exception in response, with the original exception in the body. This allows the calling script to retry/re-initialise the connection as needed (handy for USB serial which disconnects when the controller reboots).
+
+### Comminication error tolerant:
+If a timeout happens when waiting for a response, or a garbled response is recieved the `update()` method will return `False`, and the specific reason shown (unless in quiet mode). If this happens during `init()` the machineMode will be empty when init returns.
+
+It is up to the calling program to track failures and determine when communications have been 'lost'. Unless an exception occurs (see above) *serialOM* will blindly continue sending requests and looking for replies when called.
 
 ## Use
 
@@ -109,10 +114,12 @@ Conforms to the request timeout as described above and returns an empty list if 
 * * The `printPY.py` demo demonstrates this.
 * After initialisation calling update() will refresh the local OM as necesscary.
 * * The update will clean and re-populate the ObjectModel if either a machine mode change, or a restart of the controller is detected.
-* For CPython *serialOM* requires `pyserial`, or a compatible 'serial()' object. 
-* * Install your distros pyserial package: eg: `sudo apt install python-serial`, or `pip install --user pyserial`, or use a virtualenv (advanced users).
-* * On linux make sure your user is in the 'dialout' group to access the devices.
-* There is no reason why this would not run on Windows, but I have not tried that. You will need a viable Python 3.7+ install with pyserial, and change the device path to the windows 'COM' equivalent.
+
+For CPython *serialOM* requires `pyserial`, or a compatible 'serial()' object.
+* Install your distros pyserial package: eg: `sudo apt install python-serial`, or `pip install --user pyserial`, or use a virtualenv (advanced users).
+* On linux make sure your user is in the 'dialout' group to access the devices.
+
+There is no reason why this would not run on Windows, but I have not tried that. You will need a viable Python 3.7+ install with pyserial, and change the device path to the windows 'COM' equivalent.
 
 ## Notes:
 Written in CPython; but I am trying to keep all the logic and data handling simple and low-memory for porting to microPython.

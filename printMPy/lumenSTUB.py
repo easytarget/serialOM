@@ -7,18 +7,18 @@ from machine import Timer
 
 class lumen:
     moods = {
-             'off':(1,1,0),
-              'on':(0,1,0),
-            'busy':(1,1,1),
-             'job':(1,0,1),
-          'paused':(0,0,1),
-             'err':(1,0,0),
+             'off':(1,1,0), # orange
+              'on':(0,1,0), # green
+            'busy':(1,1,1), # white
+             'job':(1,0,1), # violet
+          'paused':(0,0,1), # blue
+             'err':(1,0,0), # red
              }
 
     def __init__(self,bright=1,flash=120):
         '''
             start led/neopixel etc
-            
+
             properties:
                 self.bright = float(0..1), intensity
                 self.flash  = int(), flash duration in ms
@@ -31,51 +31,63 @@ class lumen:
     def blink(self,mood):
         '''
             flash the mood after an update finishes
-            use an interrupt timer
-            to turn off after self.flash time
+            use an interrupt timer to turn off after flash time
             timer features vary by MCU, example here is for RP2040, ymmv
         '''
         def unblink(t):
             # interrupt/schedule target
             #print('TODO: led-off')
-            pass
-        
+            pass # Put code here to turn the LED off
+
         if mood == 'empty':
             return
-        #print('TODO: led-on: "' + mood + '"')
         # uncomment timer line below
         #Timer(period=self.flash, mode=Timer.ONE_SHOT, callback=unblink)
-        pass
-    
+        #print('TODO: led-on: "' + mood + '"')
+        pass  # Put code here to turn the LED on, if it is RGB use the colors in the mood map.
+
     def send(self):
         '''
             Use for a seperate 'send heartbeat' led, if available
             cycling on/off every time a request cycle begins
         '''
-        #print('TODO: send-flash')
-        pass
-    
+        self._heartbeat = not self._heartbeat
+        if self._heartbeat:
+            #print('TODO: heartbeat on')
+            pass  # replace with code to turn heartbeat indicator on
+        else:
+            #print('TODO: heartbeat off')
+            pass  # replace with code to turn heartbeat indicator off
+
     def emote(self,model):
         '''
             Use the model to find our mood by mapping the
             status to colors, crudely.
         '''
 
-        status = model['state']['status']
-        wifi = True
         if model is None:
             return('err')
+        if 'state' in model.keys():
+            status = model['state']['status']
+        else:
+            return 'err'
+        network = False
+        if 'network' in model.keys():
+            if len(model['network']['interfaces']) > 0:
+                for interface in model['network']['interfaces']:
+                    if interface['state'] is 'active':
+                        network = True
         if model['state']['machineMode'] == '':
-           return('err') 
+           return('err')
         if status in ['disconnected','halted']:
             return('err')
         if status is 'off':
-            if wifi:
+            if network:
                 return('off')
             else:
                 return('err')
         if status is 'idle':
-            if wifi:
+            if network:
                 return('on')
             else:
                 return('err')

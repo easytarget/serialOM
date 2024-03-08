@@ -1,3 +1,4 @@
+from machine import Pin
 '''
     Set the serial device path and baud rate here, etc.
 '''
@@ -35,6 +36,13 @@ class config():
     outputLog = None
 
     '''
-        Hardware button pin number (or None)
+        Hardware config:
+        button:     Status button pin object, (or None)
+                        eg: button = Pin(2, Pin.IN, Pin.PULL_UP)
+                        see the micropython 'machine.Pin()' docs
+        buttonDown: Pin value when button depressed
+        buttonTm:   debounce time (ms)
     '''
-    button = 2
+    button = None
+    buttonDown = 0
+    buttonTm = 80

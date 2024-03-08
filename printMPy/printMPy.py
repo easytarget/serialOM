@@ -6,9 +6,8 @@ from config import config
 # The microPython standard libs
 from sys import exit
 from gc import collect,mem_free
-from machine import UART,Pin
+from machine import UART,reset
 from time import sleep_ms,ticks_ms,ticks_diff,localtime
-from machine import reset
 
 '''
     PrintMPy is a serialOM.py loop for MicroPython devices.
@@ -77,6 +76,8 @@ if config.rawLog:
         pp('raw data being logged to: ', config.rawLog)
         rawLog.write('\n' + startText +  '\n')
 outputLog = None
+
+# Output logging
 if config.outputLog:
     try:
         outputLog = open(config.outputLog, "a")
@@ -94,7 +95,7 @@ if not out.running:
 
 # hardware button
 if config.button:
-    button = Pin(config.button, Pin.IN, Pin.PULL_UP)
+    button = config.button
     button.irq(trigger=button.IRQ_FALLING, handler=buttonpress)
 
 
@@ -109,7 +110,6 @@ else:
 # Illumination/mood LEDs
 led = lumen()
 led.blink('busy')
-led.send()
 
 # create the OM handler
 try:
