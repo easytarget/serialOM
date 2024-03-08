@@ -198,17 +198,17 @@ class serialOM:
             try:
                 payload = loads(line)
             except:
-                # invalid JSON, skip line
+                self._print('invalid JSON recieved')
                 continue
             # Update local OM data
             if 'key' not in payload.keys():
-                # Valid JSON but no 'key' data in it
+                self._print('valid JSON recieved, but no "key" data in it')
                 continue
             elif payload['key'] != OMkey:
-                # Valid JSON but not for the key we requested
+                self._print('valid JSON recieved, but not for the key we requested')
                 continue
             elif 'result' not in payload.keys():
-                # Valid JSON but no 'result' data in it
+                self._print('valid JSON recieved, but no "result" data in it')
                 continue
             # We have a result, store it
             if 'f' in payload['flags']:
@@ -314,6 +314,7 @@ class serialOM:
             print(e)
             raise serialOMError('Failed to query length of input buffer : ' + repr(e)) from None
         if waiting > 0:
+            # there is data in the RX buffer, clean it
             try:
                 junk = self._rrf.read()
             except Exception as e:
@@ -323,7 +324,6 @@ class serialOM:
                     self._rawLog.write(junk.decode('ascii'))
                 except:
                     pass  # just silently ignore decode failures here
-
         # send command
         try:
             self._rrf.write(bytearray(code + "\r\n",'utf-8'))
@@ -365,6 +365,11 @@ class serialOM:
                 break
             if not json:
                 response.append(readLine)
+        if len(response) == 0:
+            if json:
+                self._print('timed out waiting for a json response')
+            else:
+                self._print('timed out waiting for a response')
         # now have either a 'json-like' string or a timeout, cleanup and return
         collect()
         return response
