@@ -41,8 +41,10 @@ class config():
                         eg: button = Pin(2, Pin.IN, Pin.PULL_UP)
                         see the micropython 'machine.Pin()' docs
         buttonDown: Pin value when button depressed
-        buttonTm:   debounce time (ms)
+        buttonTm:   debounce time (ms); keep this as low as practical
+        buttonLong: long press time (ms) for WiFi toggle, 0 to disable
     '''
     button = None
     buttonDown = 0
-    buttonTm = 80
+    buttonTm = 50
+    buttonLong = 500
