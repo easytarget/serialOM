@@ -43,6 +43,8 @@ class outputRRF:
         # If running I2C displays etc this should reflect their status
         self.running = True
         self.statusActive = False
+        self.statusDuration = 2000     # CONFIG
+        self._statusRequested = 0
 
         # demo only?
         self._begin = ticks_ms()
@@ -126,7 +128,11 @@ class outputRRF:
 
     def showStatus(self, model=None, hostInfo=None):
         # Returns specific status details for the controller and PrintPy
-        # this could be expanded for microPython memory etc.
+        # this will be expanded for microPython host status. NetWork status
+        if ticks_diff(ticks_ms(),self._statusRequested) < self.statusDuration:
+            self._statusRequested = ticks_ms()
+            return ''
+        self._statusRequested = ticks_ms()
         if model is not None:
             self._OM = model
         if self._OM is None:

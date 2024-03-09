@@ -43,11 +43,29 @@ def hardwareFail(why):
     while True:  # loop forever
         sleep_ms(60000)
 
-def buttonpress(p):  # Needs debounce!
-    outputText = out.showStatus(OM.model,'printPy Free Memory: ' + str(mem_free()))
-    if outputText:
-             print(outputText,end='')
-    sleep_ms(100)  # 100ms of debounce before we return control.
+def buttonDown(_p):
+    # Button event IRQ handler
+    state = button.value()
+    now = ticks_ms()
+    sleep_ms(config.buttonTm)
+    if button.value() == state:
+        buttonPressed(now)
+
+def buttonPressed(irqTime):
+    global buttonTime
+    if button.value() == config.buttonDown:
+        buttonTime = irqTime
+        print('+',end='')
+        outputText = out.showStatus(OM.model,'printPy Free Memory: ' + str(mem_free()))
+        if outputText:
+            print(outputText,end='')
+    else:
+        print('-',end='')
+        # This should really require a second press /while/ the status is showing.
+        if config.buttonLong > 0 and buttonTime is not None:
+            if ticks_diff(ticks_ms(),buttonTime) > config.buttonLong:
+                print('WIFI TRIGGER') # TODO: Wifi enable/disabe cycle
+        buttonTime = None
 
 
 '''
@@ -94,10 +112,11 @@ if not out.running:
     hardwareFail('Failed to start output device')
 
 # hardware button
+buttonTime = None
 if config.button:
     button = config.button
-    button.irq(trigger=button.IRQ_FALLING, handler=buttonpress)
-
+    button.irq(trigger=button.IRQ_FALLING | button.IRQ_RISING, handler=buttonDown)
+    pp('button present on:',repr(button).split('(')[1].split(',')[0])
 
 # Init RRF USB/serial connection
 rrf = UART(config.device)
