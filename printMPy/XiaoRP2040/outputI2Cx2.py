@@ -38,7 +38,7 @@ class outputRRF:
               'Laser':['move','job','boards','network']}
 
     def __init__(self, log=None):
-        self._log = log
+        self._log = log  # Find a way to use this for display debugging
         self._OM = None
         # If running I2C displays etc this should reflect their status
         self.running = True
@@ -103,9 +103,6 @@ class outputRRF:
             r = hostInfo + ' || ' + self._showModel() + '\n'
         else:
             r = self._showModel() + '\n'
-        if self._log:
-            self._log.write('[' + str(int(time())) + '] ' + r + '\n')
-
         if self._OM['state']["status"] is not 'off':
             self._screenOn()
             now = int(ticks_diff(ticks_ms(), self._begin))
@@ -151,8 +148,6 @@ class outputRRF:
         if hostInfo:
             r += '\n' + hostInfo
         # Return results
-        if self._log:
-            self._log.write('[' + str(int(time())) + '] ' + r + '\n')
         self.statusActive = False
         return r + '\n'
 
