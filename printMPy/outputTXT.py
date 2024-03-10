@@ -45,8 +45,6 @@ class outputRRF:
         self._OM = None
         self.running = True
         self.statusActive = False
-        self.statusDuration = 2000     # CONFIG
-        self._statusRequested = 0
 
     def update(self,model=None, hostInfo=None):
         # Updates the local model, returns the current status text
@@ -65,10 +63,6 @@ class outputRRF:
     def showStatus(self, model=None, hostInfo=None):
         # Returns specific status details for the controller and PrintPy
         # this will be expanded for microPython host status. NetWork status
-        if ticks_diff(ticks_ms(),self._statusRequested) < self.statusDuration:
-            self._statusRequested = ticks_ms()
-            return ''
-        self._statusRequested = ticks_ms()
         if model is not None:
             self._OM = model
         if self._OM is None:
