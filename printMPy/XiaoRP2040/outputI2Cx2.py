@@ -1,6 +1,12 @@
 from time import sleep_ms,ticks_ms,ticks_diff
 from machine import Pin,I2C
 from ssd1306 import SSD1306_I2C
+from sys import path
+# fonts
+path.append('fonts')
+from writer import Writer
+import mpyFbFont_u8g2_spleen_12x24
+import mpyFbFont_u8g2_symb14
 
 '''
     This is a I2C twin 128x64 OLED display out put class for PrintMPY
@@ -66,13 +72,20 @@ class outputRRF:
         self._cleanScreen()
         self._active = True
 
+
     def _cleanScreen(self):
-        self._d0.rect(0, 0, 127, 16, 1)
-        self._d0.rect(10, 20, 107, 43, 1)
+        #self._d0.rect(0, 0, 127, 16, 1)
+        #self._d0.rect(10, 20, 107, 43, 1)
         self._d0.text('serialOM', 40, 5, 1)
-        self._d1.rect(0, 0, 127, 16, 1)
-        self._d1.rect(10, 20, 107, 43, 1)
+        #self._d1.rect(0, 0, 127, 16, 1)
+        #self._d1.rect(10, 20, 107, 43, 1)
         self._d1.text('demo', 44, 5, 1)
+        w0 = Writer(self._d0, mpyFbFont_u8g2_spleen_12x24)
+        w0.set_textpos(self._d0, 27, 35)  # Y,X
+        w0.printstring("abcdef")
+        w1 = Writer(self._d1,mpyFbFont_u8g2_symb14)
+        w1.set_textpos(self._d1, 29, 35)
+        w1.printstring("abcdef")
         self._d0.show()
         self._d1.show()
 
@@ -83,6 +96,7 @@ class outputRRF:
             self._active = True
 
     def _screenOff(self):
+        return
         if self._active:
             self._d0.poweroff()
             self._d1.poweroff()
