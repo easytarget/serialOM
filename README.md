@@ -1,22 +1,26 @@
 # serialOM.py
-A RepRapFirmware [ObjectModel](https://github.com/Duet3D/RepRapFirmware/wiki/Object-Model-Documentation) serial access tool for Python3.7+ and microPython 1.22+
+A [RepRapFirmware](https://github.com/Duet3D/RepRapFirmware) [ObjectModel](https://github.com/Duet3D/RepRapFirmware/wiki/Object-Model-Documentation) serial access tool for [Python3](https://www.python.org/) and [microPython](https://micropython.org/)
 
 **serialOM** implements a fetch and update cycle using [`M409`](https://docs.duet3d.com/User_manual/Reference/Gcodes#m409-query-object-model) commands to query the ObjectModel on the controller, the responses are gathered and merged into a local Dictionary structure. That can be accessed to drive displays, loggers and more.
 
 ## Requirements:
-### CPython 3.7 (or higher)
-* `PySerial` (https://pyserial.readthedocs.io/)
+### Either: CPython 3.7+
+* For communications you need to install `PySerial` (https://pyserial.readthedocs.io/)
   * *serialOM* expects to be passed a PySerial object (but other serial/stream devices may work too).
-### microPython 1.212 (or higher)
+  
+### Or: microPython 1.21+
 * A well specified microPython based MCU with the latest official MPY firmware on it.
-* * In my simple testing *serialOM* is using at least 100K of ram to run the text-only printPy demo. CPU speed is not an issue, at least on a single RP2040 thread @ 120Mhz.
-#### common
-* A suitable RRF USB/serial/UART device specified with '[M575](https://docs.duet3d.com/User_manual/Reference/Gcodes#m575-set-serial-comms-parameters)' in `config.g` to connect to.
+
+### A Duet/RRF controller to talk to,
+* Connected to the python system via USB serial or UART
+* The USB/UART device must be specified with '[M575](https://docs.duet3d.com/User_manual/Reference/Gcodes#m575-set-serial-comms-parameters)' in `config.g`.
   * For USB set `M575 P0 S2` in your config, this will set the USB port correctly.
   * Other controller UART ports should use `S0` as the port mode (`S2` also works).
   * CRC/Checksum modes are *not* supported, this includes the default `S1` mode.
-* `compatLib.py`: A local set of stubs for cross-python compatibility.
-  * Keep this in the same folder as `serialOM.py`.
+
+You also need:
+* `compatLib.py`: A local set of stubs for cross-python compatibility
+  * This is provided; keep it in the same folder as `serialOM.py`.
 
 ## Overview:
 **serialOM()** takes a 'serial' object at init, and a dictionary with the OM keys to gather for each machine mode.
