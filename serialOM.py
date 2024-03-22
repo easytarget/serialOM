@@ -228,15 +228,15 @@ class serialOM:
 
     def _keyRequest(self,key,verboseList):
         # Do an individual key request using the correct verbosity
-        #print(key,end='')                              # debug
+        #debug print(key,end='')
         if key in verboseList:
-            #print('*',end='')  # debug
+            #debug print('*',end='')
             if not self._omRequest(key,'vnd' + str(self._depth)):
                 return False;
         else:
-            #print('.',end='')  # debug
+            #debug print('.',end='')
             if not self._omRequest(key,'fnd' + str(self._depth)):
-                 return False;
+                return False;
         return True
 
     def _stateRequest(self,verboseSeqs):
@@ -266,7 +266,7 @@ class serialOM:
         # a list of keys where the sequence number has changed
         changed=[]
         # get the seqs key, note and record all changes
-        #print('Q',end='')                                  # debug
+        #debug print('Q',end='')
         if self._omRequest('seqs','vnd99'):
             for key in self._seqKeys:
                 if self._seqs[key] != self.model['seqs'][key]:
