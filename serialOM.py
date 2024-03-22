@@ -249,6 +249,8 @@ class serialOM:
             # clean and reset the local OM and seqs, returns full seqs list
             self.model = self._defaultModel
             self._seqs = {}
+            for key in self._seqKeys:
+                self._seqs[key] = -1
             self._print(why)
             return self._seqKeys
 
