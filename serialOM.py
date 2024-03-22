@@ -232,6 +232,8 @@ class serialOM:
         if key in verboseList:
             #debug print('*',end='')
             if not self._omRequest(key,'vnd' + str(self._depth)):
+                # failed verbose key, reset seq
+                self._seqs[key] = -1
                 return False;
         else:
             #debug print('.',end='')
