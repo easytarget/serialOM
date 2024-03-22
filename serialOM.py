@@ -105,10 +105,12 @@ class serialOM:
         self._depth = 99
         self._uartRxBuf = 2048
         self._defaultModel = {'state':{'status':'unknown'},'seqs':None}
-        self._seqs = {}
         self._seqKeys = ['state']  # we always check 'state'
         for mode in self._omKeys.keys():  # all possible keys
             self._seqKeys = list(set(self._seqKeys) | set(self._omKeys[mode]))
+        self._seqs = {}
+        for key in self._seqKeys:
+            self._seqs[key] = -1
         self._upTime = -1
 
         # public parameters
@@ -263,10 +265,6 @@ class serialOM:
         # Send a 'seqs' request to the OM, updates local OM and returns
         # a list of keys where the sequence number has changed
         changed=[]
-        if self._seqs == {}:                           # TODO, can put in init
-            # no previous data, start from scratch
-            for key in self._seqKeys:
-                self._seqs[key] = -1
         # get the seqs key, note and record all changes
         #print('Q',end='')                                  # debug
         if self._omRequest('seqs','vnd99'):
