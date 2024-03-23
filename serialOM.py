@@ -223,6 +223,8 @@ class serialOM:
                 # Verbose output replaces the existing key if a result is supplied
                 if payload['result'] != None:
                     self.model[payload['key']] = payload['result']
+                    if payload['key'] in self._seqKeys:
+                        self._seqs[payload['key']] = self.model['seqs'][payload['key']]
                     success = True
         return success
 
@@ -232,8 +234,6 @@ class serialOM:
         if key in verboseList:
             #debug print('*',end='')
             if not self._omRequest(key,'vnd' + str(self._depth)):
-                # failed verbose key, reset seq
-                self._seqs[key] = -1
                 return False;
         else:
             #debug print('.',end='')
@@ -275,7 +275,6 @@ class serialOM:
             for key in self._seqKeys:
                 if self._seqs[key] != self.model['seqs'][key]:
                     changed.append(key)
-                    self._seqs[key] = self.model['seqs'][key]
         else:
             self._print('sequence key request failed')
         return changed
