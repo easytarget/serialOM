@@ -194,7 +194,7 @@ class serialOM:
             return a if b is None else b
 
         # Process Json candidate lines
-        success = False
+        ownKey = False
         for line in response:
             # Load as a json data structure
             try:
@@ -212,33 +212,34 @@ class serialOM:
             elif payload['key'] != OMkey:
                 self._print('valid JSON recieved, but for "' + payload['key'],end='"')
                 self._print(', not the key we requested: "' + OMkey + '"')
-            # We have a result, store it
+            else:
+                ownKey = True
+            # We have a result, store it (even if not for 'our' key)
             if 'f' in payload['flags']:
                 # Frequent updates just refresh the existing key as needed
                 if payload['result'] != None:
+                    #debug print('+',end='')
                     self.model[payload['key']] = merge(self.model[payload['key']],payload['result'])
-                # M409 may legitimately return an empty key when getting frequent data
-                success = True
             else:
-                # Verbose output replaces the existing key if a result is supplied
+                # Verbose output simply replaces the existing key
                 if payload['result'] != None:
+                    #debug print('*',end='')
                     self.model[payload['key']] = payload['result']
                     if payload['key'] in self._seqKeys:
                         self._seqs[payload['key']] = self.model['seqs'][payload['key']]
-                    success = True
-        return success
+        return ownKey
 
-    def _keyRequest(self,key,verboseList):
+    def _keyRequest(self,key):
         # Do an individual key request using the correct verbosity
-        if key in verboseList:
-            if not self._omRequest(key,'vnd' + str(self._depth)):
-                return False;
+        if self._seqs[key] != self.model['seqs'][key]:
+            if self._omRequest(key,'vnd' + str(self._depth)):
+                return True;
         else:
-            if not self._omRequest(key,'fnd' + str(self._depth)):
-                return False;
-        return True
+            if self._omRequest(key,'fnd' + str(self._depth)):
+                return True;
+        return False
 
-    def _stateRequest(self,verboseSeqs):
+    def _stateRequest(self):
         # sends a state request
         # handles machine mode and uptime changes
 
@@ -251,29 +252,26 @@ class serialOM:
             self._print(why)
             return self._seqKeys
 
-        if not self._keyRequest('state',verboseSeqs):
+        if not self._keyRequest('state'):
             self._print('state key request failed')
+            return False
         if self._upTime > self.model['state']['upTime']:
-            verboseSeqs = cleanstart('controller restarted')
+            cleanstart('controller restarted')
         if self.machineMode != self.model['state']['machineMode']:
-            verboseSeqs = cleanstart('machine mode is: ' +
-                                      self.model['state']['machineMode'])
+            cleanstart('machine mode is: ' + self.model['state']['machineMode'])
         self.machineMode = self.model['state']['machineMode']
         self._upTime = self.model['state']['upTime']
-        return verboseSeqs
+        return True
 
     def _seqRequest(self):
         # Send a 'seqs' request to the OM, updates local OM and returns
         # a list of keys where the sequence number has changed
         changed=[]
-        # get the seqs key, note and record all changes
-        if self._omRequest('seqs','vnd99'):
-            for key in self._seqKeys:
-                if self._seqs[key] != self.model['seqs'][key]:
-                    changed.append(key)
-        else:
+        # get the seqs key directly
+        if not self._omRequest('seqs','vnd99'):
             self._print('sequence key request failed')
-        return changed
+            return False
+        return True
 
     def _firmwareRequest(self):
         # Use M115 to (re-establish comms and verify firmware
@@ -360,12 +358,18 @@ class serialOM:
     def update(self):
         # Do an update cycle; get new data and update local OM
         success = True  # track (soft) failures
-        verboseSeqs = self._seqRequest()
-        verboseList = self._stateRequest(verboseSeqs)
+        # do a sequence number request update
+        if not self._seqRequest():
+            return False
+        # do a state request (handles restart and mode changes)
+        if not self._stateRequest():
+            return False
         if self.machineMode not in self._omKeys.keys():
+            # should never hit this, but just in case
             self._print('unknown machine mode "' + self.machineMode + '"')
             return False
+        # do the individual key requests
         for key in self._omKeys[self.machineMode]:
-            if not self._keyRequest(key, verboseList):
+            if not self._keyRequest(key):
                 success = False
         return success
