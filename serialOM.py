@@ -129,8 +129,8 @@ class serialOM:
         elif 'UART' in str(type(rrf)):
             # UART (micropython)
             self._uart = True
-            rrf.init(timeout = int(self._requestTimeout / 2),
-                     timeout_char = int(self._requestTimeout / 2),
+            rrf.init(timeout = int(self._requestTimeout / 10),
+                     timeout_char = int(self._requestTimeout / 10),
                      rxbuf = self._uartRxBuf)
         else:
             self._print('Unable to determine serial stream type to enforce read timeouts!')
@@ -206,12 +206,12 @@ class serialOM:
             if 'key' not in payload.keys():
                 self._print('valid JSON recieved, but no "key" data in it')
                 continue
-            elif payload['key'] != OMkey:
-                self._print('valid JSON recieved, but not for the key we requested')
-                continue
             elif 'result' not in payload.keys():
                 self._print('valid JSON recieved, but no "result" data in it')
                 continue
+            elif payload['key'] != OMkey:
+                self._print('valid JSON recieved, but for "' + payload['key'],end='"')
+                self._print(', not the key we requested: "' + OMkey + '"')
             # We have a result, store it
             if 'f' in payload['flags']:
                 # Frequent updates just refresh the existing key as needed
@@ -230,13 +230,10 @@ class serialOM:
 
     def _keyRequest(self,key,verboseList):
         # Do an individual key request using the correct verbosity
-        #debug print(key,end='')
         if key in verboseList:
-            #debug print('*',end='')
             if not self._omRequest(key,'vnd' + str(self._depth)):
                 return False;
         else:
-            #debug print('.',end='')
             if not self._omRequest(key,'fnd' + str(self._depth)):
                 return False;
         return True
@@ -270,7 +267,6 @@ class serialOM:
         # a list of keys where the sequence number has changed
         changed=[]
         # get the seqs key, note and record all changes
-        #debug print('Q',end='')
         if self._omRequest('seqs','vnd99'):
             for key in self._seqKeys:
                 if self._seqs[key] != self.model['seqs'][key]:
@@ -304,28 +300,7 @@ class serialOM:
         return haveRRF
 
     def sendGcode(self, code):
-        # send a gcode then block until it is sent, or error
-        # begin by absorbing whatever is in our buffer
-        try:
-            if self._uart:
-                waiting = self._rrf.any()
-            else:
-                waiting = self._rrf.in_waiting
-        except Exception as e:
-            print(e)
-            raise serialOMError('Failed to query length of input buffer : ' + repr(e)) from None
-        if waiting > 0:
-            # there is data in the RX buffer, clean it
-            try:
-                junk = self._rrf.read()
-            except Exception as e:
-                raise serialOMError('Failed to flush input buffer : ' + repr(e)) from None
-            if self._rawLog:
-                try:
-                    self._rawLog.write(junk.decode('ascii'))
-                except:
-                    pass  # just silently ignore decode failures here
-        # send command
+        # send a gcode
         try:
             self._rrf.write(bytearray(code + "\r\n",'utf-8'))
         except Exception as e:
@@ -341,37 +316,44 @@ class serialOM:
             If 'json' is set we exit immediately when
             a potential JSON canidate is seen.
         '''
+        def getLine():
+            # Local function to get and decode a line from serial device
+            try:
+                rawLine = self._rrf.readline()
+            except Exception as e:
+                raise serialOMError('Serial read from controller failed : ' + repr(e)) from None
+            try:
+                readLine = rawLine.decode('ascii')
+            except:
+                self_print('ascii decode failure')
+                readLine = ''
+            if self._rawLog and readLine:
+                self._rawLog.write(readLine)
+            return readLine
+
         # Send the command to RRF
         self.sendGcode(cmd)
         # And wait for a response
         requestTime = ticks_ms()
         response=[]
-        # only look for responses within the requestTimeout period
-        while (ticks_diff(ticks_ms(),requestTime) < self._requestTimeout):
-            try:
-                rawLine = self._rrf.readline()
-            except Exception as e:
-                raise serialOMError('Serial read from controller failed : ' + repr(e)) from None
-            if not rawLine:
-                continue
-            try:
-                readLine = rawLine.decode('ascii')
-            except:
-                self_print('ascii decode failure')
-                continue
-            if self._rawLog:
-                self._rawLog.write(readLine)
-            if (readLine[:1] == '{') and (readLine[-2:] == '}\n') and json:
-                response.append(readLine)
-                break
+        readLine = ''
+        # look for a response within the requestTimeout period
+        while (ticks_diff(ticks_ms(),requestTime) < self._requestTimeout) and not readLine:
+            readLine = getLine()
+        # now read all lines that arrive within the serialTimeout
+        while readLine:
             if not json:
                 response.append(readLine)
+            elif (readLine[:1] == '{') and (readLine[-2:] == '}\n'):
+                response.append(readLine)
+            # see if more data is in the recieve buffer
+            readLine = getLine()
+        # cleanup and return
         if len(response) == 0:
             if json:
                 self._print('timed out waiting for a json response')
             else:
                 self._print('timed out waiting for a response')
-        # now have either a 'json-like' string or a timeout, cleanup and return
         collect()
         return response
 
