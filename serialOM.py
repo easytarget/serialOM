@@ -129,8 +129,8 @@ class serialOM:
         elif 'UART' in str(type(rrf)):
             # UART (micropython)
             self._uart = True
-            rrf.init(timeout = int(self._requestTimeout / 2),
-                     timeout_char = int(self._requestTimeout / 2),
+            rrf.init(timeout = int(self._requestTimeout / 10),
+                     timeout_char = int(self._requestTimeout / 10),
                      rxbuf = self._uartRxBuf)
         else:
             self._print('Unable to determine serial stream type to enforce read timeouts!')
@@ -194,7 +194,7 @@ class serialOM:
             return a if b is None else b
 
         # Process Json candidate lines
-        success = False
+        ownKey = False
         for line in response:
             # Load as a json data structure
             try:
@@ -203,45 +203,47 @@ class serialOM:
                 self._print('invalid JSON recieved')
                 continue
             # Update local OM data
+            if 'seq' in payload.keys():
+                # json info messages, currently ignored, string in payload['resp']
+                continue
             if 'key' not in payload.keys():
                 self._print('valid JSON recieved, but no "key" data in it')
-                continue
-            elif payload['key'] != OMkey:
-                self._print('valid JSON recieved, but not for the key we requested')
                 continue
             elif 'result' not in payload.keys():
                 self._print('valid JSON recieved, but no "result" data in it')
                 continue
-            # We have a result, store it
+            elif payload['key'] != OMkey:
+                self._print('out of sequence response')
+            else:
+                ownKey = True
+            # We have a result, store it (even if not for 'our' key)
             if 'f' in payload['flags']:
                 # Frequent updates just refresh the existing key as needed
                 if payload['result'] != None:
+                    #debug print('+',end='')
                     self.model[payload['key']] = merge(self.model[payload['key']],payload['result'])
-                # M409 may legitimately return an empty key when getting frequent data
-                success = True
             else:
-                # Verbose output replaces the existing key if a result is supplied
+                # Verbose output simply replaces the existing key
                 if payload['result'] != None:
+                    #debug print('*',end='')
                     self.model[payload['key']] = payload['result']
-                    success = True
-        return success
+                    if payload['key'] in self._seqKeys:
+                        self._seqs[payload['key']] = self.model['seqs'][payload['key']]
+            # always gc if OM updated
+            collect()
+        return ownKey
 
-    def _keyRequest(self,key,verboseList):
+    def _keyRequest(self,key):
         # Do an individual key request using the correct verbosity
-        #debug print(key,end='')
-        if key in verboseList:
-            #debug print('*',end='')
-            if not self._omRequest(key,'vnd' + str(self._depth)):
-                # failed verbose key, reset seq
-                self._seqs[key] = -1
-                return False;
+        if self._seqs[key] != self.model['seqs'][key]:
+            if self._omRequest(key,'vnd' + str(self._depth)):
+                return True;
         else:
-            #debug print('.',end='')
-            if not self._omRequest(key,'fnd' + str(self._depth)):
-                return False;
-        return True
+            if self._omRequest(key,'fnd' + str(self._depth)):
+                return True;
+        return False
 
-    def _stateRequest(self,verboseSeqs):
+    def _stateRequest(self):
         # sends a state request
         # handles machine mode and uptime changes
 
@@ -254,31 +256,26 @@ class serialOM:
             self._print(why)
             return self._seqKeys
 
-        if not self._keyRequest('state',verboseSeqs):
+        if not self._keyRequest('state'):
             self._print('state key request failed')
+            return False
         if self._upTime > self.model['state']['upTime']:
-            verboseSeqs = cleanstart('controller restarted')
+            cleanstart('controller restarted')
         if self.machineMode != self.model['state']['machineMode']:
-            verboseSeqs = cleanstart('machine mode is: ' +
-                                      self.model['state']['machineMode'])
+            cleanstart('machine mode is: ' + self.model['state']['machineMode'])
         self.machineMode = self.model['state']['machineMode']
         self._upTime = self.model['state']['upTime']
-        return verboseSeqs
+        return True
 
     def _seqRequest(self):
         # Send a 'seqs' request to the OM, updates local OM and returns
         # a list of keys where the sequence number has changed
         changed=[]
-        # get the seqs key, note and record all changes
-        #debug print('Q',end='')
-        if self._omRequest('seqs','vnd99'):
-            for key in self._seqKeys:
-                if self._seqs[key] != self.model['seqs'][key]:
-                    changed.append(key)
-                    self._seqs[key] = self.model['seqs'][key]
-        else:
+        # get the seqs key directly
+        if not self._omRequest('seqs','vnd99'):
             self._print('sequence key request failed')
-        return changed
+            return False
+        return True
 
     def _firmwareRequest(self):
         # Use M115 to (re-establish comms and verify firmware
@@ -305,28 +302,7 @@ class serialOM:
         return haveRRF
 
     def sendGcode(self, code):
-        # send a gcode then block until it is sent, or error
-        # begin by absorbing whatever is in our buffer
-        try:
-            if self._uart:
-                waiting = self._rrf.any()
-            else:
-                waiting = self._rrf.in_waiting
-        except Exception as e:
-            print(e)
-            raise serialOMError('Failed to query length of input buffer : ' + repr(e)) from None
-        if waiting > 0:
-            # there is data in the RX buffer, clean it
-            try:
-                junk = self._rrf.read()
-            except Exception as e:
-                raise serialOMError('Failed to flush input buffer : ' + repr(e)) from None
-            if self._rawLog:
-                try:
-                    self._rawLog.write(junk.decode('ascii'))
-                except:
-                    pass  # just silently ignore decode failures here
-        # send command
+        # send a gcode
         try:
             self._rrf.write(bytearray(code + "\r\n",'utf-8'))
         except Exception as e:
@@ -342,49 +318,69 @@ class serialOM:
             If 'json' is set we exit immediately when
             a potential JSON canidate is seen.
         '''
-        # Send the command to RRF
-        self.sendGcode(cmd)
-        # And wait for a response
-        requestTime = ticks_ms()
-        response=[]
-        # only look for responses within the requestTimeout period
-        while (ticks_diff(ticks_ms(),requestTime) < self._requestTimeout):
+        def getLine():
+            # Local function to get and decode a line from serial device
             try:
                 rawLine = self._rrf.readline()
             except Exception as e:
                 raise serialOMError('Serial read from controller failed : ' + repr(e)) from None
             if not rawLine:
-                continue
+                return ''
             try:
                 readLine = rawLine.decode('ascii')
             except:
-                self_print('ascii decode failure')
-                continue
-            if self._rawLog:
+                self._print('ascii decode failure')
+                readLine = ''
+            if self._rawLog and readLine:
                 self._rawLog.write(readLine)
-            if (readLine[:1] == '{') and (readLine[-2:] == '}\n') and json:
-                response.append(readLine)
-                break
+            return readLine
+
+        # Send the command to RRF
+        self.sendGcode(cmd)
+        # And wait for a response
+        requestTime = ticks_ms()
+        response=[]
+        readLine = ''
+        # look for a response within the requestTimeout period
+        while (ticks_diff(ticks_ms(),requestTime) < self._requestTimeout) and not readLine:
+            readLine = getLine()
+        # now read all lines that arrive within the serialTimeout
+        while readLine:
             if not json:
                 response.append(readLine)
+            elif (readLine[:1] == '{') and (readLine[-2:] == '}\n'):
+                response.append(readLine)
+            if ticks_diff(ticks_ms(),requestTime) > (5 * self._requestTimeout):
+                # runaway comms scenario; may indicate controler crash
+                raise serialOMError('Runaway communications; controller in error state?')
+                break
+            # see if more data is in the recieve buffer
+            readLine = getLine()
+        # cleanup and return
         if len(response) == 0:
             if json:
                 self._print('timed out waiting for a json response')
             else:
                 self._print('timed out waiting for a response')
-        # now have either a 'json-like' string or a timeout, cleanup and return
+        # gc after response loop
         collect()
         return response
 
     def update(self):
         # Do an update cycle; get new data and update local OM
         success = True  # track (soft) failures
-        verboseSeqs = self._seqRequest()
-        verboseList = self._stateRequest(verboseSeqs)
+        # do a sequence number request update
+        if not self._seqRequest():
+            return False
+        # do a state request (handles restart and mode changes)
+        if not self._stateRequest():
+            return False
         if self.machineMode not in self._omKeys.keys():
+            # should never hit this, but just in case
             self._print('unknown machine mode "' + self.machineMode + '"')
             return False
+        # do the individual key requests
         for key in self._omKeys[self.machineMode]:
-            if not self._keyRequest(key, verboseList):
+            if not self._keyRequest(key):
                 success = False
         return success
