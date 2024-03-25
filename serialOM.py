@@ -203,6 +203,9 @@ class serialOM:
                 self._print('invalid JSON recieved')
                 continue
             # Update local OM data
+            if 'seq' in payload.keys():
+                # json info messages, currently ignored, string in payload['resp']
+                continue
             if 'key' not in payload.keys():
                 self._print('valid JSON recieved, but no "key" data in it')
                 continue
