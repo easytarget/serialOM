@@ -210,8 +210,7 @@ class serialOM:
                 self._print('valid JSON recieved, but no "result" data in it')
                 continue
             elif payload['key'] != OMkey:
-                self._print('valid JSON recieved, but for "' + payload['key'],end='"')
-                self._print(', not the key we requested: "' + OMkey + '"')
+                self._print('out of sequence response')
             else:
                 ownKey = True
             # We have a result, store it (even if not for 'our' key)
@@ -227,6 +226,8 @@ class serialOM:
                     self.model[payload['key']] = payload['result']
                     if payload['key'] in self._seqKeys:
                         self._seqs[payload['key']] = self.model['seqs'][payload['key']]
+            # always gc if OM updated
+            collect()
         return ownKey
 
     def _keyRequest(self,key):
@@ -346,6 +347,10 @@ class serialOM:
                 response.append(readLine)
             elif (readLine[:1] == '{') and (readLine[-2:] == '}\n'):
                 response.append(readLine)
+            if ticks_diff(ticks_ms(),requestTime) > (5 * self._requestTimeout):
+                # runaway comms scenario; may indicate controler crash
+                raise serialOMError('Runaway communications; controller in error state?')
+                break
             # see if more data is in the recieve buffer
             readLine = getLine()
         # cleanup and return
@@ -354,6 +359,7 @@ class serialOM:
                 self._print('timed out waiting for a json response')
             else:
                 self._print('timed out waiting for a response')
+        # gc after response loop
         collect()
         return response
 
