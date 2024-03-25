@@ -320,10 +320,12 @@ class serialOM:
                 rawLine = self._rrf.readline()
             except Exception as e:
                 raise serialOMError('Serial read from controller failed : ' + repr(e)) from None
+            if not rawLine:
+                return ''
             try:
                 readLine = rawLine.decode('ascii')
             except:
-                self_print('ascii decode failure')
+                self._print('ascii decode failure')
                 readLine = ''
             if self._rawLog and readLine:
                 self._rawLog.write(readLine)
