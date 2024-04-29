@@ -7,7 +7,7 @@ A [RepRapFirmware](https://github.com/Duet3D/RepRapFirmware) [ObjectModel](https
 ### Either: CPython 3.7+
 * For communications you need to install `PySerial` (https://pyserial.readthedocs.io/)
   * *serialOM* expects to be passed a PySerial object (but other serial/stream devices may work too).
-  
+
 ### Or: microPython 1.21+
 * A well specified microPython based MCU with the latest official MPY firmware on it.
 
@@ -17,10 +17,6 @@ A [RepRapFirmware](https://github.com/Duet3D/RepRapFirmware) [ObjectModel](https
   * For USB set `M575 P0 S2` in your config, this will set the USB port correctly.
   * Other controller UART ports should use `S0` as the port mode (`S2` also works).
   * CRC/Checksum modes are *not* supported, this includes the default `S1` mode.
-
-You also need:
-* `compatLib.py`: A local set of stubs for cross-python compatibility
-  * This is provided; keep it in the same folder as `serialOM.py`.
 
 ## Overview:
 **serialOM()** takes a 'serial' object at init, and a dictionary with the OM keys to gather for each machine mode.
@@ -138,7 +134,7 @@ Published under the CC0 (Creative Commons Zero) Licence; use however you want! D
 
 *serialOM* comes with a full implementation of a datalogging script in the [`printPy`](printPy) folder.
 
-This uses the features above to implement a robust data gathering loop. This loop calls an independent *output class* to process and display the data being gathered. 
+This uses the features above to implement a robust data gathering loop. This loop calls an independent *output class* to process and display the data being gathered.
 
 ## outputXXX.py class
 In the *printPy* demo this is a `text` implementation of the class which logs to the console, and optionally to a log file with timestamps.
