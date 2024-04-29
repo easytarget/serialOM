@@ -5,7 +5,29 @@ try:
     from time import sleep_ms,ticks_ms,ticks_diff  # microPython
 except:
     from compatLib import sleep_ms,ticks_ms,ticks_diff  # CPython
-from compatLib import zip_longest
+try:
+    from itertools import zip_longest
+except:
+    def zip_longest(*args, fillvalue=None):
+        # Micropython needs a local zip_longest. From:
+        # https://docs.python.org/3/library/itertools.html#itertools.zip_longest
+        iterators = [iter(it) for it in args]
+        num_active = len(iterators)
+        if not num_active:
+            return
+        while True:
+            values = []
+            for i, it in enumerate(iterators):
+                try:
+                    value = next(it)
+                except StopIteration:
+                    num_active -= 1
+                    if not num_active:
+                        return
+                    iterators[i] = repeat(fillvalue)
+                    value = fillvalue
+                values.append(value)
+
 from compatLib import reduce
 
 '''
