@@ -8,17 +8,22 @@ from config import config
 # Common classes between CPython and microPython
 from gc import collect
 from sys import argv
-'''
-    microPython:
-    from machine import UART
-    from time import sleep_ms,ticks_ms,ticks_diff,localtime
-    from machine import reset
-'''
-from serial import Serial
-from compatLib import sleep_ms,ticks_ms,ticks_diff
 from time import localtime
+from serial import Serial
 from sys import executable
 from os import execv
+
+# local millisecond time functions that mimic micropython time lib
+from time import sleep,time
+def ticks_ms():
+    return int(time() * 1000)
+def ticks_diff(first,second):
+    # This should 'just work' in CPython3
+    # int()'s can be as 'long' as they need to be, with no need for
+    # the 'rollover' protection provided by the microPython equivalent
+    return int(first-second)
+def sleep_ms(ms):
+    sleep(ms/1000)
 
 '''
     PrintPy is a serialOM.py demo/example.
