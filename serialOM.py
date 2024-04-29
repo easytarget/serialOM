@@ -1,14 +1,25 @@
 from sys import implementation
 from json import loads
 from gc import collect
+
 # CPython / MicroPython compatibility:
-# Try to import fast native library, otherwise skip
+# Try to import fast native library, otherwise define a local version
 try:
     from time import sleep_ms,ticks_ms,ticks_diff  # microPython
 except:
-    from compatLib import sleep_ms,ticks_ms,ticks_diff  # CPython
+    from time import sleep,time
+    def ticks_ms():
+        return int(time() * 1000)
+    def ticks_diff(first,second):
+        # This should 'just work' in CPython3
+        # int()'s can be as 'long' as they need to be, with no need for
+        # the 'rollover' protection provided by the microPython equivalent
+        return int(first-second)
+    def sleep_ms(ms):
+        sleep(ms/1000)
 
-# 'standard' Cpython functions that are not native to Micropython.
+
+# Standard CPython functions that are not native to Micropython.
 # - provided here for cross-compatibility
 def zip_longest(*args, fillvalue=None):
     # Adapted from: https://docs.python.org/3/library/itertools.html#itertools.zip_longest
