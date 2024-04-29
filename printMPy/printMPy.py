@@ -1,7 +1,7 @@
 # Import our local classes and config
 from serialOM import serialOM
 from outputTXT import outputRRF
-from lumenNOLED import lumen
+from lumenSTUB import lumen
 from config import config
 # The microPython standard libs
 from sys import exit
