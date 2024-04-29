@@ -1,12 +1,12 @@
 # Import our local classes and config
 from serialOM import serialOM
-from outputTXT import outputRRF
-from lumenSTUB import lumen
+from outputI2Cx2 import outputRRF
+from lumenXIAO2040 import lumen
 from config import config
 # The microPython standard libs
 from sys import exit
 from gc import collect,mem_free
-from machine import UART,reset
+from machine import UART,reset,disable_irq,enable_irq
 from time import sleep_ms,ticks_ms,ticks_diff,localtime
 
 '''
@@ -93,9 +93,9 @@ if config.rawLog:
     else:
         pp('raw data being logged to: ', config.rawLog)
         rawLog.write('\n' + startText +  '\n')
-outputLog = None
 
 # Output logging
+outputLog = None
 if config.outputLog:
     try:
         outputLog = open(config.outputLog, "a")
