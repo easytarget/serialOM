@@ -110,6 +110,8 @@ pp('starting output')
 out = outputRRF(log=outputLog)
 if not out.running:
     hardwareFail('Failed to start output device')
+else:
+    sleep_ms(333)
 
 # hardware button
 buttonTime = None

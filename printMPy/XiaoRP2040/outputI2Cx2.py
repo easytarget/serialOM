@@ -4,9 +4,12 @@ from ssd1306 import SSD1306_I2C
 from sys import path
 # fonts
 path.append('fonts')
-from writer import Writer
-import mpyFbFont_u8g2_spleen_12x24
-import mpyFbFont_u8g2_symb14
+from ezFBfont import ezFBfont
+import mPyEZfont_u8g2_spleen_12x24_n
+import mPyEZfont_u8g2_spleen_16x32_n
+import mPyEZfont_u8g2_helvR10_r
+import mPyEZfont_u8g2_helvR24_n
+import mPyEZfont_u8g2_helvR12_n
 
 '''
     This is a I2C twin 128x64 OLED display out put class for PrintMPY
@@ -68,47 +71,55 @@ class outputRRF:
         self._d1.invert(False)
         self._d0.rotate(1)
         self._d1.rotate(1)
-        self._screenBright(1)
-        self._cleanScreen()
+        self._fontSetup(self._d0)
+        self._fontSetup(self._d1)
+        self._bright(1)
+        self._clean()
+        self._splash()
         self._active = True
 
+    def _fontSetup(self,d):
+        d.heading = ezFBfont(d, mPyEZfont_u8g2_helvR10_r)
+        d.tens  = ezFBfont(d, mPyEZfont_u8g2_helvR24_n, halign='right', valign='baseline')
+        d.units = ezFBfont(d, mPyEZfont_u8g2_helvR12_n, valign='baseline')
 
-    def _cleanScreen(self):
-        #self._d0.rect(0, 0, 127, 16, 1)
-        #self._d0.rect(10, 20, 107, 43, 1)
-        self._d0.text('serialOM', 40, 5, 1)
-        #self._d1.rect(0, 0, 127, 16, 1)
-        #self._d1.rect(10, 20, 107, 43, 1)
-        self._d1.text('demo', 44, 5, 1)
-        w0 = Writer(self._d0, mpyFbFont_u8g2_spleen_12x24)
-        w0.set_textpos(self._d0, 27, 35)  # Y,X
-        w0.printstring("abcdef")
-        w1 = Writer(self._d1,mpyFbFont_u8g2_symb14)
-        w1.set_textpos(self._d1, 29, 35)
-        w1.printstring("abcdef")
-        self._d0.show()
-        self._d1.show()
 
-    def _screenOn(self):
+    def _splash(self):
+        # Should scroll a 'clean' screen in?
+        self._d0.heading.write('serialOM', 63, 0, halign='center')
+        self._d1.heading.write('demo', 63, 0, halign='center')
+        self._show()
+
+    def _clean(self):
+            self._d0.fill_rect(0, 0, 128, 64, 0)
+            self._d1.fill_rect(0, 0, 128, 64, 0)
+
+    def _on(self):
         if not self._active:
             self._d0.poweron()
             self._d1.poweron()
             self._active = True
 
-    def _screenOff(self):
-        return
+    def _off(self):
         if self._active:
             self._d0.poweroff()
             self._d1.poweroff()
             self._active = False
 
-    def _screenBright(self,bright):
+    def _show(self):
+        self._d0.show()
+        self._d1.show()
+
+    def _bright(self,bright):
         bright = int(bright * 255)
         self._d0.contrast(bright)
         self._d1.contrast(bright)
 
     def update(self,model=None, hostInfo=None):
-        # Updates the local model, returns the current status text
+        if self._OM['state']["status"] is not 'off':
+            self._on()
+            self._clean()
+       # Updates the local model, returns the current status text
         if model is not None:
             self._OM = model
         if self._OM is None:
@@ -118,23 +129,14 @@ class outputRRF:
         else:
             r = self._showModel() + '\n'
         if self._OM['state']["status"] is not 'off':
-            self._screenOn()
             now = int(ticks_diff(ticks_ms(), self._begin))
             secs = int((now / 1000) % 60)
             mins = int((now / 60000) % 60)
-            self._d0.fill_rect(11, 21, 105, 41, 0)
-            self._d1.fill_rect(11, 21, 105, 41, 0)
-            self._d0.text(str(mins), 58, 35, 1)
-            self._d1.text(str(secs), 58, 35, 1)
-            self._d0.rect(1, 1, 125, 14, 0, True)
-            self._d0.text("State: " + self._OM['state']["status"], 10, 5, 1)
-            self._d1.rect(1, 1, 125, 14, 0, True)
-            self._d1.text("RRF Up: " + str(self._OM['state']["upTime"]), 10, 5, 1)
-            self._d0.show()
-            self._d1.show()
+            self._d0.heading.write(' ' + self._OM['state']["status"], 0, 0)
+            self._d1.heading.write(' Up: ' + str(self._OM['state']["upTime"]), 0, 0)
+            self._show()
         else:
-            self._screenOff()
-
+            self._off()
         return r
 
     def showStatus(self, model=None, hostInfo=None):
@@ -315,6 +317,22 @@ class outputRRF:
             for tool in self._OM['tools']:
                 if len(tool['heaters']) > 0:
                     r += showHeater(tool['heaters'][0],'e' + str(self._OM['tools'].index(tool)))
+        #display
+        bed = self._OM['heat']['heaters'][0]['current']
+        units=int(bed)
+        dec = int((bed - units) * 10)
+        self._d1.heading.write('bed', 127, 15, halign='right')
+        self._d1.tens.write('{}.'.format(units), 88, 50)
+        self._d1.tens.write('°', 88, 50, tkey=0, halign='center')
+        self._d1.units.write(' {:01d}'.format(dec), 88, 50)
+        e0 = self._OM['heat']['heaters'][1]['current']
+        units=int(e0)
+        dec = int((e0 - units) * 10)
+        self._d0.heading.write('e0', 127, 15, halign='right')
+        self._d0.tens.write('{}.'.format(units), 88, 50)
+        self._d0.tens.write('°', 88, 50, tkey=0, halign='center')
+        self._d0.units.write(' {:01d}'.format(dec), 88, 50)
+
         return r
 
     def _updateCNC(self):
