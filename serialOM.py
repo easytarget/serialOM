@@ -114,14 +114,17 @@ class serialOM:
 
 
         init arguments:
-            rrf :           PySerial or micropython UART object
-            omKeys:         dict; per-mode lists of keys to sync, see below
-            rawLog:         file object; where to write the raw log, or None
-            quiet:          bool; suppress messages on startup and when soft errors are encountered
+            rrf :           PySerial or micropython UART object, required
+            omKeys:         dict; per-mode lists of keys to sync, required, see below
+            rawLog:         file object; where to write the raw log, default: None
+            quiet:          bool; suppress messages on startup and when soft errors
+                                are encountered, default: False
+            noCheck:        bool; skip firmware (M115) check during init, default: False
 
-                            omKeys = {'machineMode':['OMkey1','OMkey2',..],etc..}
-                                     Empty lists [] are allowed.
-                                     At least one machineMode must be specified.
+            Specifying the data to fetch:
+                omKeys = {'machineMode':['OMkey1','OMkey2',..],etc..}
+                         Empty lists [] are allowed.
+                         At least one machineMode must be specified.
 
         methods:
             sendGcode(code):         Sends a Gcode to controller and returns immediately.
@@ -148,12 +151,13 @@ class serialOM:
                                    of 512 bytes is probably OK, but increasing is not a bad idea
     '''
 
-    def __init__(self, rrf, omKeys, rawLog=None, quiet=False):
+    def __init__(self, rrf, omKeys, rawLog=None, quiet=False, noCheck=False):
         self._rrf = rrf
         self._uart = False
         self._omKeys = omKeys
         self._rawLog = rawLog
         self._quiet = quiet
+        self._noCheck = noCheck
         self._requestTimeout = 250
         self._depth = 99
         self._uartRxBuf = 2048
@@ -176,11 +180,11 @@ class serialOM:
         # set a non blocking timeout on the serial device
         # default is 1/10 of the request time
         if 'Serial' in str(type(rrf)):
-            # PySerial
+            # PySerial, set the values
             rrf.timeout = self._requestTimeout / 10000
             rrf.write_timeout = rrf.timeout
         elif 'UART' in str(type(rrf)):
-            # UART (micropython)
+            # UART (micropython), call init again to update timeouts
             self._uart = True
             rrf.init(timeout = int(self._requestTimeout / 10),
                      timeout_char = int(self._requestTimeout / 10),
@@ -198,15 +202,18 @@ class serialOM:
 
     def _start(self):
         # Start the serialOM comms
-        retries = 10
-        while not self._firmwareRequest():
-            retries -= 1
-            if retries == 0:
-                self._print('failed to get a sensible M115 response from controller')
-                return False
-            self._print('failed..retrying (' + str(retries) + ' left)')
-            sleep_ms(self._requestTimeout)
-        self._print('controller is connected')
+        if self._noCheck:
+            self._print('skipping controller check')
+        else:
+            retries = 10
+            while not self._firmwareRequest():
+                retries -= 1
+                if retries == 0:
+                    self._print('failed to get a sensible M115 response from controller')
+                    return False
+                self._print('failed..retrying (' + str(retries) + ' left)')
+                sleep_ms(self._requestTimeout)
+            self._print('controller is connected')
         sleep_ms(100)
         # Do initial update to fill local model`
         self._print('making initial data set request')

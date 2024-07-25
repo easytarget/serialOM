@@ -40,7 +40,7 @@ If *serialOM* times out or fails to detect a RRF controller during initialisatio
 The provided 'miniDemo.py' script is more detailed and shows the use of the `OM.update()` and `OM.getResponse()` methods.
 
 ### Blocking:
-When being initialised, updated or making requests *serialOM* is blocking, it implements it's own request timeouts and will return if the connected device times out. This 'per request' timeout can be passed  at init(). During update()s serialOM will make 2 requests minimum, plus one request per additional OM key. The maximum blocking period is the sum total of these, plus processing time. During init it amy be longer due to the firmware check cycle.
+When being initialised, updated or making requests *serialOM* is blocking, it implements it's own request timeouts and will return if the connected device times out. This 'per request' timeout can be passed  at init(). During update()s serialOM will make 2 requests minimum, plus one request per additional OM key. The maximum blocking period is the sum total of these, plus processing time. During init it may be longer due to the firmware check cycle.
 
 The `Serial()` device neeeds to have it's own blocking timeouts set lower than the Request timeout. This is done during init by *serialOM* itself and does not need to be specified when creating PySerial or UART objects.
 * If adapting for other serial classes than PySerial/UART you need to set the blocking correctly at init.
@@ -62,7 +62,7 @@ from serialOM import serialOM
 ```
 And create an instance of it with:
 ```python
-OM = serialOM(rrf, omKeys, requestTimeout=500, rawLog=None, quiet=False)
+OM = serialOM(rrf, omKeys, requestTimeout=500, rawLog=None, quiet=False, noCheck=False)
 ```
 where:
 ```console
@@ -71,8 +71,9 @@ omKeys         = per-mode lists of keys to sync, (dict, see below)
                  omKeys = {'machineMode':['OMkey1','OMkey2',..],etc..}
                           Empty lists [] are allowed.
                           At least one machineMode must be specified.
-rawLog         = raw log, or None (writable file object)
-quiet          = Suppress info messages (bool)
+rawLog         = raw log, or None (writable file object, default None)
+quiet          = Suppress info messages (bool, default False)
+noCheck        = Skip M115 firmware check during init (bool, default False)
 ```
 If the initial connection and update are successful the property `OM.machineMode` will be populated, otherwise it will return an empty string.
 
