@@ -118,8 +118,8 @@ class serialOM:
             omKeys:         dict; per-mode lists of keys to sync, required, see below
             rawLog:         file object; where to write the raw log, default: None
             quiet:          bool; suppress messages on startup and when soft errors
-                                are encountered, default: False
-            noCheck:        bool; skip firmware (M115) check during init, default: False
+                                are encountered, default: True
+            noCheck:        bool; skip firmware (M115) check, default: False
 
             Specifying the data to fetch:
                 omKeys = {'machineMode':['OMkey1','OMkey2',..],etc..}
