@@ -5,18 +5,20 @@ from gc import collect
 # CPython / MicroPython compatibility:
 # Try to import fast native library, otherwise define a local version
 try:
-    from time import sleep_ms,ticks_ms,ticks_diff  # microPython
+    from time import sleep_ms,ticks_ms,ticks_diff, ticks_add  # microPython
 except:
     from time import sleep,time
     def ticks_ms():
         return int(time() * 1000)
-    def ticks_diff(first,second):
-        # This should 'just work' in CPython3
-        # int()'s can be as 'long' as they need to be, with no need for
-        # the 'rollover' protection provided by the microPython equivalent
-        return int(first-second)
     def sleep_ms(ms):
         sleep(ms/1000)
+    # The following should 'just work' in CPython3
+    # int()'s can be as 'long' as they need to be, with no need for
+    # the 'rollover' protection provided by the microPython equivalent
+    def ticks_diff(first,second):
+        return int(first-second)
+    def ticks_add(first,second):
+        return int(first+second)
 
 
 # Standard CPython functions that are not native to Micropython.
@@ -158,7 +160,7 @@ class serialOM:
         self._rawLog = rawLog
         self._quiet = quiet
         self._noCheck = noCheck
-        self._requestTimeout = 250
+        self._requestTimeout = 250 # ms
         self._depth = 99
         self._uartRxBuf = 2048
         self._defaultModel = {'state':{'status':'unknown'},'seqs':None}
@@ -179,16 +181,17 @@ class serialOM:
 
         # set a non blocking timeout on the serial device
         # default is 1/10 of the request time
+        # timeout values for functions here are in ms
         if 'Serial' in str(type(rrf)):
             # PySerial, set the values
-            rrf.timeout = self._requestTimeout / 10000
+            rrf.timeout = self._requestTimeout / 10  # ms
             rrf.write_timeout = rrf.timeout
         elif 'UART' in str(type(rrf)):
             # UART (micropython), call init again to update timeouts
             self._uart = True
             rrf.init(timeout = int(self._requestTimeout / 10),
                      timeout_char = int(self._requestTimeout / 10),
-                     rxbuf = self._uartRxBuf)
+                     rxbuf = self._uartRxBuf)  # timeouts in ms
         else:
             self._print('Unable to determine serial stream type to enforce read timeouts!')
             self._print('please ensure these are set for your device to prevent serialOM blocking')
@@ -398,11 +401,12 @@ class serialOM:
         # Send the command to RRF
         self.sendGcode(cmd)
         # And wait for a response
-        requestTime = ticks_ms()
+        requestTime = ticks_add(ticks_ms(), self._requestTimeout)
+        expireTime = ticks_add(ticks_ms(), self._requestTimeout * 5)
         response=[]
         readLine = ''
         # look for a response within the requestTimeout period
-        while (ticks_diff(ticks_ms(),requestTime) < self._requestTimeout) and not readLine:
+        while (ticks_diff(ticks_ms(),requestTime) < 0) and not readLine:
             readLine = getLine()
         # now read all lines that arrive within the serialTimeout
         while readLine:
@@ -410,7 +414,7 @@ class serialOM:
                 response.append(readLine)
             elif (readLine[:1] == '{') and (readLine[-2:] == '}\n'):
                 response.append(readLine)
-            if ticks_diff(ticks_ms(),requestTime) > (5 * self._requestTimeout):
+            if ticks_diff(ticks_ms(),expireTime) > 0:
                 # runaway comms scenario; may indicate controler crash
                 raise serialOMError('Runaway communications; controller in error state?')
                 break
