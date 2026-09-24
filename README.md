@@ -125,7 +125,7 @@ There is no reason why this would not run on Windows, but I have not tried that.
 ## Notes:
 Written in CPython; but I am trying to keep all the logic and data handling simple and low-memory for porting to microPython.
 * Non micropython standard libs are discouraged unless they have a easy micropython equivalent/local lib.
-* All times are in `ms` (micropython uses `int(ms)` for it's timing basics rather than `float(seconds)`).
+* All times are defined in microseconds (micropython uses `int(μs)` for it's timing basics rather than `float(seconds)`).
 * You can specify a 'raw' log file handle at init; this is handy when debugging but will fill very rapidly and should never be used 'in production'!
 * Tested and developed on a RaspberryPI connected to my Duet2 wifi via USB/serial, running python 3.9.
 Published under the CC0 (Creative Commons Zero) Licence; use however you want! Dont blame me if it all goes wrong..
